@@ -26,6 +26,7 @@ class ChatRequest(BaseModel):
     user_context: Optional[Dict[str, Any]] = None
     include_sources: bool = True
     max_chunks: int = Field(default=5, ge=1, le=10)
+    source: Optional[str] = Field(default=None, description="Enquiry source: widget, whatsapp, walk_in, campaign, referral")
 
 
 class Source(BaseModel):
@@ -189,6 +190,89 @@ async def get_chat_stats():
     return {"total_conversations": 0, "total_messages": 0, "active_conversations": 0}
 
 
+# ── Feedback & Payment Confirmation ──────────────────────────────
+
+class FeedbackRequest(BaseModel):
+    conversation_id: str
+    rating: str = Field(..., description="poor, fair, very_good, excellent")
+    nps_score: Optional[int] = Field(default=None, ge=0, le=10)
+    comments: Optional[str] = None
+
+
+class PaymentConfirmRequest(BaseModel):
+    conversation_id: str
+    customer_id: str
+    booking_id: str
+    amount: float
+    payment_mode: Optional[str] = None
+    receipt_url: Optional[str] = None
+
+
+@router.post("/chat/feedback")
+async def submit_feedback(request: FeedbackRequest, background_tasks: BackgroundTasks):
+    """Submit customer feedback and NPS score."""
+    services = get_services()
+
+    background_tasks.add_task(
+        _log_feedback, request.conversation_id, request.rating, request.nps_score
+    )
+
+    sentiment = None
+    if services.is_ready and request.comments:
+        try:
+            sentiment = await services.orchestrator._analyze_sentiment(request.comments)
+        except Exception as e:
+            logger.warning(f"Sentiment analysis failed: {e}")
+
+    return {
+        "message": "Feedback recorded",
+        "conversation_id": request.conversation_id,
+        "rating": request.rating,
+        "nps_score": request.nps_score,
+        "sentiment": sentiment,
+    }
+
+
+@router.post("/chat/payment-confirm")
+async def payment_confirm(request: PaymentConfirmRequest, background_tasks: BackgroundTasks):
+    """
+    Send payment confirmation message via chatbot.
+    Customer replies Yes/No; 'No' triggers mismatch alert.
+    """
+    services = get_services()
+    conversation_id = request.conversation_id
+
+    confirmation_msg = (
+        f"We have received a payment of Rs. {request.amount:,.2f} "
+        f"for Booking ID {request.booking_id} (Customer ID: {request.customer_id})."
+    )
+    if request.receipt_url:
+        confirmation_msg += f"\nReceipt: {request.receipt_url}"
+    confirmation_msg += "\n\nIs this correct? Please reply Yes or No."
+
+    if services.is_ready:
+        try:
+            orch_request = OrchestratorRequest(
+                conversation_id=conversation_id,
+                message=confirmation_msg,
+                user_context={"type": "payment_confirmation", "booking_id": request.booking_id},
+            )
+            result = await services.orchestrator.process(orch_request)
+            return {
+                "message": "Payment confirmation sent",
+                "conversation_id": conversation_id,
+                "confirmation_text": confirmation_msg,
+            }
+        except Exception as e:
+            logger.error(f"Payment confirmation error: {e}")
+
+    return {
+        "message": "Payment confirmation queued",
+        "conversation_id": conversation_id,
+        "confirmation_text": confirmation_msg,
+    }
+
+
 # ── Helpers ───────────────────────────────────────────────────────
 
 def _generate_mock_response(message: str) -> Dict[str, Any]:
@@ -236,5 +320,17 @@ def _log_chat_analytics(conversation_id: str, message: str, intent: str, lead_sc
             "message_length": len(message),
             "intent": intent,
             "lead_score": lead_score,
+        },
+    )
+
+
+def _log_feedback(conversation_id: str, rating: str, nps_score: Optional[int]):
+    """Log feedback (background task)."""
+    logger.info(
+        "Feedback received",
+        extra={
+            "conversation_id": conversation_id,
+            "rating": rating,
+            "nps_score": nps_score,
         },
     )

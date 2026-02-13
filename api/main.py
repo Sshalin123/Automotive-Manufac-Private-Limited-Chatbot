@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routes import chat, leads, admin
+from .routes import chat, leads, admin, webhooks, scheduled, notifications
 from .services import get_services, initialize_services
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,9 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
     app.include_router(leads.router, prefix="/api/v1", tags=["Leads"])
     app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+    app.include_router(webhooks.router, prefix="/api/v1", tags=["Webhooks"])
+    app.include_router(scheduled.router, prefix="/api/v1", tags=["Scheduled"])
+    app.include_router(notifications.router, prefix="/api/v1", tags=["Notifications"])
 
     # Root endpoint
     @app.get("/")

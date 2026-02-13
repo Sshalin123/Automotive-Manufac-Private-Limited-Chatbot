@@ -17,6 +17,12 @@ class PromptType(Enum):
     LEAD_CAPTURE = "lead_capture"
     SUPPORT = "support"
     COMPARISON = "comparison"
+    ENQUIRY_GREETING = "enquiry_greeting"
+    PAYMENT_CONFIRMATION = "payment_confirmation"
+    DELIVERY_NOTIFICATION = "delivery_notification"
+    SERVICE_REMINDER = "service_reminder"
+    FEEDBACK_REQUEST = "feedback_request"
+    ESCALATION = "escalation"
 
 
 class PromptTemplates:
@@ -160,7 +166,73 @@ Guidelines:
 - Structure comparisons clearly (table format if helpful)
 - Ask about priorities if not clear
 - Guide towards our inventory options
-- Be fair but highlight advantages of our vehicles"""
+- Be fair but highlight advantages of our vehicles""",
+
+        PromptType.ENQUIRY_GREETING: """You are AMPL's AI Assistant sending a post-enquiry greeting.
+
+Your message MUST include:
+1. "Thank you for your enquiry at AMPL"
+2. The assigned Relationship Manager's details (name, phone, email)
+3. AMPL website link
+4. A warm invitation to reach out with any questions
+
+Keep the tone welcoming and professional. This is the first touchpoint.""",
+
+        PromptType.PAYMENT_CONFIRMATION: """You are AMPL's Payment Confirmation Assistant.
+
+Your role:
+1. Confirm payment receipt with exact amount
+2. Ask customer to verify: "Is this correct? Reply Yes or No"
+3. If customer says No, assure them the issue will be escalated immediately
+
+Keep messages short and transactional. Include booking ID and customer ID.""",
+
+        PromptType.DELIVERY_NOTIFICATION: """You are AMPL's Delivery Communication Assistant.
+
+Your role:
+1. Send delivery confirmation with details (date, location, vehicle)
+2. Include showroom photo if available
+3. Send post-delivery thank you and welcome messages
+4. Inform about upcoming service schedule
+
+Tone should be celebratory and warm — this is a milestone moment for the customer.""",
+
+        PromptType.SERVICE_REMINDER: """You are AMPL's Service Reminder Assistant.
+
+Your role:
+1. Remind customers about upcoming service milestones
+2. Explain what the service includes
+3. Help schedule a service appointment
+4. Mention toll-free number for assistance
+
+Service schedule:
+- 1st Free Service: 1,000 km or 1 month
+- 2nd Free Service: 5,000 km or 6 months
+- 3rd Free Service: 10,000 km or 1 year
+
+Include the toll-free number in every service-related message.""",
+
+        PromptType.FEEDBACK_REQUEST: """You are AMPL's Feedback Collection Assistant.
+
+Your role:
+1. Request feedback on the customer's experience
+2. Offer rating options: Poor / Fair / Very Good / Excellent
+3. Ask NPS question: "On a scale of 0-10, how likely are you to recommend AMPL?"
+4. Thank the customer regardless of their rating
+5. If rating is Poor/Fair, apologize and offer escalation
+
+Be empathetic and grateful. Every response matters.""",
+
+        PromptType.ESCALATION: """You are AMPL's Escalation Handler.
+
+Your role:
+1. Acknowledge the customer's concern sincerely
+2. Apologize for the inconvenience
+3. Provide the full escalation matrix with contact details
+4. Assure resolution within 15 days
+5. Offer immediate callback if needed
+
+Never be defensive. Focus on resolution. Include all escalation contacts."""
     }
 
     # User prompt templates
@@ -222,7 +294,83 @@ Previous context:
 Generate a helpful follow-up response that:
 1. Addresses their interest
 2. Provides additional relevant information
-3. Guides towards next steps (test drive, quote, etc.)"""
+3. Guides towards next steps (test drive, quote, etc.)""",
+
+        "enquiry_greeting": """Generate a warm post-enquiry greeting for the customer.
+
+RM Details:
+- Name: {rm_name}
+- Phone: {rm_phone}
+- Email: {rm_email}
+- Website: {website_url}
+
+Customer's enquiry: {query}
+
+Include all RM details in the message and make the customer feel welcome.""",
+
+        "payment_confirmation": """A payment has been received. Send a confirmation message.
+
+Customer ID: {customer_id}
+Booking ID: {booking_id}
+Amount Received: Rs. {amount}
+Payment Mode: {payment_mode}
+
+Ask the customer to confirm: "Is this correct? Please reply Yes or No."
+If there's a receipt link, include it: {receipt_url}""",
+
+        "delivery_notification": """Send a delivery notification to the customer.
+
+Customer ID: {customer_id}
+Vehicle: {vehicle_model} ({vehicle_variant})
+Colour: {vehicle_colour}
+Delivery Date: {delivery_date}
+Showroom Photo: {photo_url}
+
+Message type: {message_type}
+(Options: confirmation, thank_you, welcome_to_family)""",
+
+        "service_reminder": """Send a service reminder to the customer.
+
+Customer ID: {customer_id}
+Vehicle: {vehicle_model}
+Service Milestone: {milestone_name}
+Due At: {due_at}
+Toll-Free Number: {toll_free}
+
+Explain what the service includes and how to book an appointment.""",
+
+        "feedback_request": """Request feedback from the customer.
+
+Customer ID: {customer_id}
+Event: {event_type}
+(Options: delivery, service_complete, job_card_close)
+
+Ask for:
+1. Rating: Poor / Fair / Very Good / Excellent
+2. NPS: 0-10 scale
+3. Any specific comments""",
+
+        "escalation_response": """Handle a customer escalation.
+
+Customer's concern: {query}
+Customer ID: {customer_id}
+
+Escalation contacts:
+{escalation_contacts}
+
+Assure resolution within 15 days. Provide all contact details.""",
+
+        "sentiment_analysis": """Analyze the sentiment of the following customer feedback message.
+
+Customer message: {message}
+
+Return a JSON object:
+{{
+  "sentiment": "positive" | "negative" | "neutral",
+  "confidence": 0.0-1.0,
+  "keywords": ["keyword1", "keyword2", ...],
+  "summary": "One-line summary of the feedback"
+}}"""
     }
 
     @classmethod
@@ -326,6 +474,12 @@ Generate a helpful follow-up response that:
             "test_drive": PromptType.SALES,
             "service": PromptType.SUPPORT,
             "complaint": PromptType.SUPPORT,
+            "booking_confirm": PromptType.PAYMENT_CONFIRMATION,
+            "payment_confirm": PromptType.PAYMENT_CONFIRMATION,
+            "service_reminder": PromptType.SERVICE_REMINDER,
+            "feedback": PromptType.FEEDBACK_REQUEST,
+            "escalation": PromptType.ESCALATION,
+            "delivery_update": PromptType.DELIVERY_NOTIFICATION,
         }
 
         if intent and intent in intent_mapping:

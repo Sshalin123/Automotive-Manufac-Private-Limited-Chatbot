@@ -12,6 +12,12 @@ intent_scores:
   exchange: 15
   insurance: 10
   service: 5
+  booking_confirm: 25
+  payment_confirm: 20
+  delivery_update: 15
+  service_reminder: 5
+  feedback: 5
+  escalation: -10
   info: 0
   complaint: -20
 

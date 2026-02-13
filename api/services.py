@@ -153,6 +153,16 @@ class Services:
             temperature=s.temperature,
             brand_name=s.brand_name,
         )
+
+        # Inject RM details and service config into orchestrator
+        self.orchestrator.set_service_config({
+            "rm_name": s.rm_name,
+            "rm_phone": s.rm_phone,
+            "rm_email": s.rm_email,
+            "website_url": s.website_url,
+            "toll_free_number": s.toll_free_number,
+            "escalation_contacts": s.escalation_contacts_list,
+        })
         logger.info("Chat orchestrator ready")
 
     @property

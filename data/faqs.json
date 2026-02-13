@@ -76,5 +76,65 @@
     "answer": "Safety is our top priority! Our vehicles score well on Global NCAP and Bharat NCAP crash tests: 1) Most models are rated 4-5 stars for adult occupant protection. 2) Standard safety features include dual airbags, ABS with EBD, rear parking sensors, and seatbelt reminders. 3) Higher variants offer 6 airbags, ESC, TPMS, ISOFIX child seat anchors, and ADAS (Advanced Driver Assistance Systems). Ask about a specific model for its detailed safety features and crash test ratings.",
     "category": "safety",
     "tags": ["safety", "airbag", "ncap", "crash test", "adas"]
+  },
+  {
+    "question": "What is the free service schedule for my new vehicle?",
+    "answer": "Your new vehicle comes with 3 free services: 1) 1st Free Service at 1,000 km or 1 month (whichever is earlier) — includes general inspection and fluid top-up. 2) 2nd Free Service at 5,000 km or 6 months — includes oil change, filter check, and brake inspection. 3) 3rd Free Service at 10,000 km or 1 year — comprehensive check including engine, suspension, and electrical systems. After the free services, regular paid services are recommended every 10,000 km or 1 year.",
+    "category": "service",
+    "tags": ["free service", "service schedule", "1000 km", "5000 km", "10000 km", "maintenance"]
+  },
+  {
+    "question": "How does the payment and booking process work?",
+    "answer": "Our booking process is simple: 1) Choose your vehicle model, variant, and colour. 2) Pay a booking amount (typically Rs 11,000 - Rs 25,000 depending on the model). 3) You'll receive a Booking ID and confirmation message. 4) Submit KYC documents and financing paperwork. 5) Once the vehicle is allocated, you'll receive a Customer ID. 6) Pay the remaining amount before delivery. We accept payments via bank transfer, cheque, UPI, and financing. You'll receive a digital receipt for every transaction.",
+    "category": "booking",
+    "tags": ["booking", "payment", "process", "booking amount", "receipt"]
+  },
+  {
+    "question": "How will I receive my vehicle delivery?",
+    "answer": "Your delivery experience: 1) You'll receive a delivery confirmation with date, time, and location. 2) At delivery, our executive will do a full walkthrough of your vehicle's features. 3) All documents (RC application, insurance, warranty card) will be handed over. 4) You'll receive a 'Welcome to the AMPL Family' message. 5) A welcome call will follow within 7 days. 6) Home delivery is available in select areas. If there are any delays, we'll notify you with the updated timeline.",
+    "category": "delivery",
+    "tags": ["delivery", "handover", "vehicle delivery", "welcome"]
+  },
+  {
+    "question": "How do I escalate a complaint?",
+    "answer": "We take complaints seriously. Here's our escalation process: 1) First, share your concern with your Relationship Manager (RM). 2) If unresolved, contact our Sales Head. 3) Next level: Service Head / General Manager. 4) Final escalation: Senior Management. All complaints are tracked and must be resolved within 15 days. You can also call our toll-free number for immediate assistance. We'll keep you updated on the status until resolution.",
+    "category": "escalation",
+    "tags": ["complaint", "escalation", "issue", "grievance", "resolve"]
+  },
+  {
+    "question": "Do you have a loyalty program or extended warranty?",
+    "answer": "Yes! AMPL offers: 1) Loyalty points on every service and accessory purchase — redeemable on future services. 2) Extended Warranty packages: extend your coverage to 5 years / 1,50,000 km for complete peace of mind. 3) Prepaid Service Plans: lock in today's service rates and save up to 20%. 4) Referral bonus: refer a friend who purchases, and earn rewards. Ask your RM for the latest loyalty offers and pricing.",
+    "category": "loyalty",
+    "tags": ["loyalty", "points", "extended warranty", "referral", "prepaid service"]
+  },
+  {
+    "question": "What happens after my vehicle's job card is closed?",
+    "answer": "After your service job card is closed: 1) You'll receive a service completion notification with details of work done. 2) A feedback request will be sent — your rating helps us improve. 3) If you had any concerns during service, our escalation team will follow up. 4) Your next service reminder will be automatically scheduled. 5) The toll-free number is always available if you face any post-service issues.",
+    "category": "service",
+    "tags": ["job card", "service complete", "post service", "feedback"]
+  },
+  {
+    "question": "What is RC pendency and how is it tracked?",
+    "answer": "RC (Registration Certificate) pendency refers to your vehicle's permanent registration status after delivery. Here's what happens: 1) Temporary registration is provided at delivery. 2) Permanent RC processing takes 15-30 days depending on your RTO. 3) We track RC status and send you updates. 4) If RC is pending beyond 15 days, our team will follow up with the RTO on your behalf. 5) Once received, we'll arrange delivery of the RC to your address.",
+    "category": "delivery",
+    "tags": ["rc", "registration", "rto", "pendency", "rc pendency"]
+  },
+  {
+    "question": "Can I get a callback from a sales representative?",
+    "answer": "Absolutely! We'd be happy to arrange a callback. Just share: 1) Your name. 2) Phone number. 3) Preferred callback time. 4) Vehicle or topic you're interested in. Our sales representative will call you within 30 minutes during business hours (10 AM - 8 PM). For urgent queries outside business hours, you can reach us on our toll-free number.",
+    "category": "sales",
+    "tags": ["callback", "call", "contact", "sales representative", "phone"]
+  },
+  {
+    "question": "What languages can I communicate in?",
+    "answer": "You can chat with us in multiple languages! We support: 1) English. 2) Hindi (हिंदी). 3) Marathi (मराठी). 4) Gujarati (ગુજરાતી). Feel free to type in your preferred language and our assistant will respond accordingly. For phone calls, multilingual support is available through our sales and service teams.",
+    "category": "general",
+    "tags": ["language", "hindi", "marathi", "gujarati", "multilingual"]
+  },
+  {
+    "question": "How do I provide feedback about my experience?",
+    "answer": "We value your feedback! You can share it through: 1) This chat — just tell us about your experience. 2) Rate us: Poor / Fair / Very Good / Excellent. 3) NPS survey: 'On a scale of 0-10, how likely are you to recommend AMPL?' 4) Call our toll-free number. Every feedback is reviewed by our management team. If your experience was less than satisfactory, our escalation team will reach out to make it right.",
+    "category": "feedback",
+    "tags": ["feedback", "rating", "nps", "review", "experience", "survey"]
   }
 ]

@@ -4,9 +4,10 @@ Centralized configuration for AMPL Chatbot.
 All settings are loaded from environment variables via .env file.
 """
 
+import json
 import os
 from functools import lru_cache
-from typing import Optional
+from typing import Dict, List, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -77,6 +78,27 @@ class Settings(BaseSettings):
     api_version: str = Field(default="1.0.0", env="API_VERSION")
     ampl_api_key: Optional[str] = Field(default=None, env="AMPL_API_KEY")
 
+    # RM (Relationship Manager) details — included in enquiry greetings
+    rm_name: str = Field(default="AMPL Sales Team", env="RM_NAME")
+    rm_phone: str = Field(default="", env="RM_PHONE")
+    rm_email: str = Field(default="", env="RM_EMAIL")
+    website_url: str = Field(default="https://www.amplindia.com", env="WEBSITE_URL")
+    toll_free_number: str = Field(default="", env="TOLL_FREE_NUMBER")
+
+    # Escalation matrix contacts (JSON string)
+    # Format: [{"role":"Sales Head","name":"...","phone":"...","email":"..."}]
+    escalation_contacts: str = Field(default="[]", env="ESCALATION_CONTACTS")
+
+    # Service milestones for reminders (JSON string)
+    # Format: [{"name":"Welcome Call","days":7},{"name":"1st Free Service","km":1000,"days":30}, ...]
+    service_milestones: str = Field(
+        default='[{"name":"Welcome Call","days":7},{"name":"1st Free Service","km":1000,"days":30},{"name":"2nd Free Service","km":5000,"days":180},{"name":"3rd Free Service","km":10000,"days":365}]',
+        env="SERVICE_MILESTONES"
+    )
+
+    # Follow-up intervals in days after enquiry [immediate, day+1, day+15]
+    followup_intervals: str = Field(default="[0, 1, 15]", env="FOLLOWUP_INTERVALS")
+
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     debug: bool = Field(default=False, env="DEBUG")
@@ -109,6 +131,18 @@ class Settings(BaseSettings):
         if self.is_openai:
             return self.openai_llm_model
         return self.bedrock_llm_model_id
+
+    @property
+    def escalation_contacts_list(self) -> List[Dict]:
+        return json.loads(self.escalation_contacts)
+
+    @property
+    def service_milestones_list(self) -> List[Dict]:
+        return json.loads(self.service_milestones)
+
+    @property
+    def followup_intervals_list(self) -> List[int]:
+        return json.loads(self.followup_intervals)
 
 
 @lru_cache()

@@ -25,6 +25,12 @@ class Intent(Enum):
     EXCHANGE = "exchange"            # Car exchange inquiry
     INSURANCE = "insurance"          # Insurance related
     COMPLAINT = "complaint"          # Complaint or issue
+    BOOKING_CONFIRM = "booking_confirm"    # Booking/payment confirmation
+    PAYMENT_CONFIRM = "payment_confirm"    # Payment receipt confirmation (Yes/No)
+    SERVICE_REMINDER = "service_reminder"  # Service due reminder response
+    FEEDBACK = "feedback"                  # Feedback / NPS response
+    ESCALATION = "escalation"              # Escalation request
+    DELIVERY_UPDATE = "delivery_update"    # Delivery status inquiry
     UNKNOWN = "unknown"              # Unable to determine
 
 
@@ -104,6 +110,36 @@ class IntentClassifier:
             "complaint", "issue", "problem", "not working", "defect",
             "unhappy", "dissatisfied", "disappointed", "bad experience",
             "escalate", "manager", "consumer court",
+        ],
+        Intent.BOOKING_CONFIRM: [
+            "booking confirmed", "confirm booking", "booking done",
+            "booked", "booking status", "my booking", "booking details",
+            "advance paid", "token paid",
+        ],
+        Intent.PAYMENT_CONFIRM: [
+            "payment received", "amount received", "yes received",
+            "no not received", "payment mismatch", "wrong amount",
+            "receipt", "payment status", "payment confirmation",
+        ],
+        Intent.SERVICE_REMINDER: [
+            "service due", "service reminder", "when is my service",
+            "next service", "free service", "service booking",
+            "book service", "schedule service",
+        ],
+        Intent.FEEDBACK: [
+            "feedback", "rating", "review", "experience was",
+            "satisfied", "happy with", "recommend", "nps",
+            "poor", "fair", "very good", "excellent",
+        ],
+        Intent.ESCALATION: [
+            "escalate", "escalation", "speak to manager",
+            "higher authority", "not resolved", "unresolved",
+            "need help urgently", "still waiting",
+        ],
+        Intent.DELIVERY_UPDATE: [
+            "delivery status", "when will i get", "delivery date",
+            "car ready", "delivery delay", "dispatch status",
+            "allotment status", "when delivery",
         ],
     }
 
@@ -312,7 +348,7 @@ class IntentClassifier:
 Return a JSON object with these fields:
 
 {
-  "primary_intent": "BUY | FINANCE | TEST_DRIVE | SERVICE | EXCHANGE | INSURANCE | COMPLAINT | INFO",
+  "primary_intent": "BUY | FINANCE | TEST_DRIVE | SERVICE | EXCHANGE | INSURANCE | COMPLAINT | BOOKING_CONFIRM | PAYMENT_CONFIRM | SERVICE_REMINDER | FEEDBACK | ESCALATION | DELIVERY_UPDATE | INFO",
   "secondary_intents": ["...", "..."],
   "confidence": 0.0-1.0,
   "timeline": "IMMEDIATE | THIS_MONTH | THIS_QUARTER | EXPLORING | UNKNOWN",
@@ -328,6 +364,12 @@ Intent definitions:
 - EXCHANGE: Wants to exchange/trade-in old vehicle
 - INSURANCE: Insurance related queries
 - COMPLAINT: Complaints or issues
+- BOOKING_CONFIRM: Booking or payment confirmation
+- PAYMENT_CONFIRM: Payment receipt confirmation (Yes/No response)
+- SERVICE_REMINDER: Service due or service scheduling
+- FEEDBACK: Feedback, rating, or NPS response
+- ESCALATION: Requesting escalation to higher authority
+- DELIVERY_UPDATE: Delivery status or allotment inquiry
 - INFO: General information seeking
 
 """
@@ -385,6 +427,12 @@ Intent definitions:
             Intent.EXCHANGE: "Customer wants to exchange their old vehicle",
             Intent.INSURANCE: "Customer has insurance related queries",
             Intent.COMPLAINT: "Customer has a complaint or issue",
+            Intent.BOOKING_CONFIRM: "Customer confirming or inquiring about booking",
+            Intent.PAYMENT_CONFIRM: "Customer confirming payment receipt",
+            Intent.SERVICE_REMINDER: "Customer responding to service reminder",
+            Intent.FEEDBACK: "Customer providing feedback or rating",
+            Intent.ESCALATION: "Customer requesting escalation",
+            Intent.DELIVERY_UPDATE: "Customer inquiring about delivery status",
             Intent.INFO: "Customer is seeking general information",
             Intent.UNKNOWN: "Unable to determine customer intent",
         }

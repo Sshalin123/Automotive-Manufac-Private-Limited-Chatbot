@@ -69,7 +69,10 @@ class ContextBuilder:
     TYPE_PRIORITY = {
         "faq": 5,      # FAQs are most authoritative
         "inventory": 4, # Vehicle specs are important
+        "booking": 4,  # Booking details are high priority
         "insurance": 3,
+        "service": 3,  # Service info
+        "delivery": 3, # Delivery info
         "sales": 2,
         "general": 1,
     }

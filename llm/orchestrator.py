@@ -6,8 +6,10 @@ Orchestrates the full RAG pipeline from query to response.
 
 import json
 import logging
+import re
 import time
-from typing import List, Dict, Any, Optional
+import uuid
+from typing import Callable, List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -130,6 +132,14 @@ class ChatOrchestrator:
         # Conversation state
         self._conversations: Dict[str, List[Dict[str, str]]] = {}
         self._conversation_turns: Dict[str, int] = {}
+        self._conversation_stages: Dict[str, str] = {}       # enquiry / booked / delivered / servicing
+        self._conversation_created: Dict[str, datetime] = {}  # for 15-day tracking
+
+        # Service config (RM details, escalation contacts, etc.)
+        self._service_config: Dict[str, Any] = {}
+
+        # Notification callback for outbound messages (webhooks, WhatsApp, etc.)
+        self._notification_callback: Optional[Callable] = None
 
         # Initialize LLM client
         self._llm_client = None
@@ -205,10 +215,35 @@ class ChatOrchestrator:
             intent_str = intent_result.primary_intent.value if intent_result else None
             prompt_type = PromptTemplates.detect_prompt_type(request.message, intent_str)
 
+            # Detect language for multilingual support
+            language_instruction = self._get_language_instruction(request.message)
+
             system_prompt = PromptTemplates.get_system_prompt(
                 prompt_type=prompt_type,
-                brand_name=self.brand_name
+                brand_name=self.brand_name,
+                custom_instructions=language_instruction
             )
+
+            # For first message (turn 1), inject RM details into prompt if available
+            if turns == 1 and self._service_config.get("rm_name"):
+                rm_info = (
+                    f"\n\nIMPORTANT: This is the customer's first message. Include these RM details in your response:\n"
+                    f"- RM Name: {self._service_config.get('rm_name', '')}\n"
+                    f"- Phone: {self._service_config.get('rm_phone', '')}\n"
+                    f"- Email: {self._service_config.get('rm_email', '')}\n"
+                    f"- Website: {self._service_config.get('website_url', '')}"
+                )
+                system_prompt += rm_info
+
+            # Pre-booking enforcement: if BUY intent + IMMEDIATE/THIS_MONTH timeline, check mandatory fields
+            if (intent_result and entities and
+                intent_result.primary_intent.value == "buy" and
+                intent_result.timeline.value in ("immediate", "this_month") and
+                not entities.has_contact_info()):
+                system_prompt += (
+                    "\n\nIMPORTANT: The customer appears ready to purchase soon. "
+                    "Please ask for their name and contact number to proceed with pre-booking."
+                )
 
             conversation_history = self._format_conversation_history(request.conversation_id)
             user_prompt = PromptTemplates.build_rag_prompt(
@@ -236,8 +271,38 @@ class ChatOrchestrator:
                 if self.lead_router and self.lead_router.should_route(
                     type("Lead", (), {"score": lead_score, "priority": score_result.priority})()
                 ):
-                    # Create and route lead (async)
-                    pass  # Lead routing happens in background
+                    try:
+                        from lead_scoring.lead_router import Lead as CRMLead
+                        lead_obj = CRMLead(
+                            lead_id=str(uuid.uuid4()),
+                            conversation_id=request.conversation_id,
+                            score=lead_score,
+                            priority=score_result.priority,
+                            name=entities.name,
+                            phone=entities.phone_numbers[0] if entities.phone_numbers else None,
+                            email=entities.emails[0] if entities.emails else None,
+                            city=entities.city,
+                            primary_intent=intent_str,
+                            models_interested=entities.models_mentioned,
+                            budget_min=entities.budget_min,
+                            budget_max=entities.budget_max,
+                            timeline=intent_result.timeline.value if intent_result.timeline else None,
+                            last_message=request.message,
+                            conversation_turns=turns,
+                        )
+                        await self.lead_router.route_lead(lead_obj)
+                        logger.info(f"Lead routed: {lead_obj.lead_id} (score={lead_score})")
+                    except Exception as e:
+                        logger.error(f"Lead routing failed: {e}")
+
+            # Sentiment analysis for feedback messages
+            sentiment_data = None
+            if intent_result and intent_result.primary_intent.value == "feedback":
+                sentiment_data = await self._analyze_sentiment(request.message)
+
+            # Update conversation stage
+            if intent_result:
+                self._update_stage(request.conversation_id, intent_result.primary_intent.value)
 
             # Build sources
             sources = []
@@ -274,6 +339,9 @@ class ChatOrchestrator:
                     "chunks_used": context.chunk_count,
                     "prompt_type": prompt_type.value,
                     "conversation_turns": turns,
+                    "conversation_stage": self._conversation_stages.get(request.conversation_id, "enquiry"),
+                    "sentiment": sentiment_data,
+                    "entities_extracted": entities.to_dict() if entities else None,
                 }
             )
 
@@ -341,11 +409,66 @@ class ChatOrchestrator:
             logger.error(f"OpenAI generation failed: {e}")
             raise
 
+    def set_service_config(self, config: Dict[str, Any]):
+        """Set service configuration (RM details, escalation contacts, etc.)."""
+        self._service_config = config
+
+    def set_notification_callback(self, callback: Callable):
+        """Set callback for outbound notifications."""
+        self._notification_callback = callback
+
+    def _get_language_instruction(self, message: str) -> Optional[str]:
+        """Detect language and return instruction for LLM to respond in same language."""
+        # Check for Devanagari script (Hindi, Marathi)
+        if re.search(r'[\u0900-\u097F]', message):
+            return "IMPORTANT: The customer is writing in Hindi/Marathi. Respond in the same language using Devanagari script."
+        # Check for Gujarati script
+        if re.search(r'[\u0A80-\u0AFF]', message):
+            return "IMPORTANT: The customer is writing in Gujarati. Respond in Gujarati."
+        # Check for transliterated Hindi keywords
+        hindi_indicators = ["mujhe", "kya", "chahiye", "gaadi", "kitna", "kab", "kaise", "hai", "hain", "nahi", "acha"]
+        words = message.lower().split()
+        hindi_count = sum(1 for w in words if w in hindi_indicators)
+        if hindi_count >= 2:
+            return "IMPORTANT: The customer is writing in Hindi (Roman script). Respond in Hindi using Roman script (Hinglish)."
+        return None
+
+    async def _analyze_sentiment(self, message: str) -> Optional[Dict[str, Any]]:
+        """Analyze sentiment of a customer message using LLM."""
+        try:
+            prompt = PromptTemplates.get_user_prompt("sentiment_analysis", message=message)
+            system = "You are a sentiment analysis engine. Return only valid JSON."
+            response = await self._generate_response(system, prompt)
+
+            json_match = re.search(r'\{[^{}]*\}', response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group())
+        except Exception as e:
+            logger.error(f"Sentiment analysis failed: {e}")
+        return None
+
+    def _update_stage(self, conversation_id: str, intent_value: str):
+        """Update conversation stage based on intent."""
+        stage_map = {
+            "buy": "enquiry",
+            "booking_confirm": "booked",
+            "payment_confirm": "booked",
+            "delivery_update": "delivery",
+            "service": "servicing",
+            "service_reminder": "servicing",
+            "feedback": "feedback",
+        }
+        new_stage = stage_map.get(intent_value)
+        if new_stage:
+            self._conversation_stages[conversation_id] = new_stage
+
     def _update_conversation(self, conversation_id: str, role: str, content: str):
         """Update conversation history."""
         if conversation_id not in self._conversations:
             self._conversations[conversation_id] = []
             self._conversation_turns[conversation_id] = 0
+            self._conversation_created[conversation_id] = datetime.utcnow()
+            self._conversation_stages[conversation_id] = "enquiry"
 
         self._conversations[conversation_id].append({
             "role": role,
@@ -397,9 +520,21 @@ class ChatOrchestrator:
             elif intent == "test_drive":
                 actions.append("Schedule test drive")
                 actions.append("Home test drive")
-            elif intent == "service":
+            elif intent == "service" or intent == "service_reminder":
                 actions.append("Book service")
                 actions.append("Find service center")
+            elif intent == "feedback":
+                actions.append("Rate your experience")
+                actions.append("Talk to manager")
+            elif intent == "escalation" or intent == "complaint":
+                actions.append("View escalation contacts")
+                actions.append("Request callback")
+            elif intent == "delivery_update":
+                actions.append("Check delivery status")
+                actions.append("Contact sales team")
+            elif intent == "booking_confirm" or intent == "payment_confirm":
+                actions.append("View booking details")
+                actions.append("Download receipt")
 
         # General actions based on conversation state
         if turns >= 3 and not entities:
@@ -419,3 +554,5 @@ class ChatOrchestrator:
         """Clear a conversation."""
         self._conversations.pop(conversation_id, None)
         self._conversation_turns.pop(conversation_id, None)
+        self._conversation_stages.pop(conversation_id, None)
+        self._conversation_created.pop(conversation_id, None)
