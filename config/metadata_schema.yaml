@@ -1,0 +1,232 @@
+# Metadata Schema for AMPL Chatbot Documents
+# Defines the structure of metadata stored with vectors in Pinecone
+
+version: "1.0"
+
+# Common metadata fields (all document types)
+common:
+  - name: source
+    type: string
+    description: Source file path or URL
+    required: true
+    indexed: true
+
+  - name: document_type
+    type: string
+    description: Type of document (inventory, sales, insurance, faq)
+    required: true
+    indexed: true
+
+  - name: chunk_index
+    type: integer
+    description: Index of chunk within the document
+    required: true
+
+  - name: total_chunks
+    type: integer
+    description: Total chunks in the document
+    required: false
+
+  - name: ingested_at
+    type: datetime
+    description: Timestamp when document was ingested
+    required: true
+
+  - name: text
+    type: string
+    description: Original text content of the chunk
+    required: true
+
+# Document-specific metadata schemas
+schemas:
+  inventory:
+    fields:
+      - name: model_name
+        type: string
+        indexed: true
+        filterable: true
+
+      - name: variant
+        type: string
+        indexed: true
+
+      - name: price
+        type: number
+        filterable: true
+
+      - name: category
+        type: string
+        indexed: true
+        filterable: true
+        enum: [suv, sedan, hatchback, mpv, crossover]
+
+      - name: fuel_type
+        type: string
+        indexed: true
+        filterable: true
+        enum: [petrol, diesel, electric, hybrid, cng]
+
+      - name: transmission
+        type: string
+        filterable: true
+        enum: [manual, automatic, cvt, dct]
+
+      - name: launch_year
+        type: integer
+        filterable: true
+
+      - name: availability
+        type: string
+        filterable: true
+        enum: [available, limited, sold_out, coming_soon]
+
+      - name: seating_capacity
+        type: integer
+        filterable: true
+
+  sales:
+    fields:
+      - name: offer_title
+        type: string
+        indexed: true
+
+      - name: discount_type
+        type: string
+        enum: [percentage, flat, emi, exchange]
+
+      - name: discount_value
+        type: number
+
+      - name: applicable_models
+        type: array
+        items: string
+
+      - name: is_active
+        type: boolean
+        filterable: true
+
+      - name: valid_from
+        type: datetime
+
+      - name: valid_until
+        type: datetime
+        filterable: true
+
+  insurance:
+    fields:
+      - name: policy_name
+        type: string
+        indexed: true
+
+      - name: provider
+        type: string
+        indexed: true
+
+      - name: coverage_type
+        type: string
+        enum: [comprehensive, third_party, zero_dep]
+        filterable: true
+
+      - name: coverage_amount
+        type: number
+
+      - name: premium_amount
+        type: number
+
+      - name: has_zero_dep
+        type: boolean
+        filterable: true
+
+      - name: has_roadside_assistance
+        type: boolean
+        filterable: true
+
+  finance:
+    fields:
+      - name: scheme_name
+        type: string
+        indexed: true
+
+      - name: provider
+        type: string
+        indexed: true
+
+      - name: interest_rate
+        type: number
+        filterable: true
+
+      - name: max_tenure_months
+        type: integer
+        filterable: true
+
+      - name: min_down_payment_percent
+        type: number
+
+  faq:
+    fields:
+      - name: question
+        type: string
+        indexed: true
+
+      - name: category
+        type: string
+        indexed: true
+        filterable: true
+        enum: [pricing, financing, test_drive, service, warranty, general]
+
+      - name: tags
+        type: array
+        items: string
+        indexed: true
+
+      - name: priority
+        type: integer
+        filterable: true
+
+# Pinecone index configuration
+pinecone:
+  dimension: 1024  # Titan v2 embeddings
+  metric: cosine
+
+  namespaces:
+    - inventory
+    - sales
+    - insurance
+    - faq
+
+  # Serverless configuration
+  serverless:
+    cloud: aws
+    region: us-east-1
+
+# Filtering capabilities
+filters:
+  # Numeric filters
+  - field: price
+    operators: [eq, gte, lte, gt, lt]
+
+  - field: launch_year
+    operators: [eq, gte, lte]
+
+  - field: seating_capacity
+    operators: [eq, gte, lte]
+
+  # String filters
+  - field: category
+    operators: [eq, in]
+
+  - field: fuel_type
+    operators: [eq, in]
+
+  - field: availability
+    operators: [eq, in]
+
+  - field: document_type
+    operators: [eq, in]
+
+  # Boolean filters
+  - field: is_active
+    operators: [eq]
+
+  - field: has_zero_dep
+    operators: [eq]

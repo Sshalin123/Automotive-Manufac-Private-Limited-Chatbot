@@ -1,0 +1,120 @@
+# Lead Scoring Rules Configuration
+# Score range: 0-100
+# Priority thresholds: HOT >= 70, WARM >= 50, COLD < 50
+
+version: "1.0"
+
+# Intent-based scoring
+intent_scores:
+  buy: 30
+  finance: 25
+  test_drive: 20
+  exchange: 15
+  insurance: 10
+  service: 5
+  info: 0
+  complaint: -20
+
+# Entity-based scoring
+entity_scores:
+  model_mentioned: 15
+  budget_mentioned: 10
+  budget_high: 5        # Budget > 15 lakh
+  trade_in_mentioned: 5
+  location_provided: 5
+  contact_provided: 10
+  features_specified: 3
+  color_preference: 2
+
+# Timeline scoring
+timeline_scores:
+  immediate: 15
+  this_month: 10
+  this_quarter: 5
+  exploring: 0
+
+# Engagement scoring
+engagement_scores:
+  repeat_engagement: 10  # 3+ conversation turns
+  returning_visitor: 8
+  contact_willing: 10
+
+# Negative signals
+negative_signals:
+  just_browsing: -5
+  competitor_mention: -3
+  price_objection: -5
+  not_interested: -20
+
+# Priority thresholds
+thresholds:
+  hot: 70
+  warm: 50
+
+# Disqualification rules
+disqualification:
+  - intent: complaint
+    unless_resolved: true
+  - signal: spam_detected
+  - signal: out_of_service_area
+
+# Auto-routing rules
+auto_routing:
+  enabled: true
+  hot_lead_action: immediate_webhook
+  warm_lead_action: queue_for_review
+  cold_lead_action: nurture_campaign
+
+# Custom rules for specific scenarios
+custom_rules:
+  # Premium vehicle interest
+  - name: premium_interest
+    condition:
+      budget_min: 2000000  # 20 lakh+
+    score_adjustment: 10
+
+  # Test drive with appointment
+  - name: scheduled_test_drive
+    condition:
+      intent: test_drive
+      has_timeline: true
+    score_adjustment: 5
+
+  # Repeat inquiry
+  - name: repeat_inquiry
+    condition:
+      visits: 2+
+    score_adjustment: 8
+
+# Lead routing configuration
+routing:
+  webhook_timeout_seconds: 30
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+  # CRM field mapping
+  field_mapping:
+    zoho:
+      name: "Full_Name"
+      phone: "Phone"
+      email: "Email"
+      score: "Lead_Score__c"
+
+    hubspot:
+      name: "firstname,lastname"
+      phone: "phone"
+      email: "email"
+      score: "lead_score"
+
+    salesforce:
+      name: "Name"
+      phone: "Phone"
+      email: "Email"
+      score: "Lead_Score__c"
+
+# Scoring weights for combined scoring
+scoring_weights:
+  intent: 0.35
+  entities: 0.25
+  timeline: 0.20
+  engagement: 0.20

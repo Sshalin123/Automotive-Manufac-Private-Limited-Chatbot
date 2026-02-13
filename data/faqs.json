@@ -1,0 +1,80 @@
+[
+  {
+    "question": "What are the available financing options?",
+    "answer": "We offer multiple financing options: 1) Bank loans at 7.5-9.5% interest rate with tenures from 1-7 years. 2) In-house financing with quick approval in 30 minutes. 3) Zero down payment schemes on select models. 4) Special rates for government employees and defence personnel. EMI starts as low as Rs 12,999/month depending on the vehicle and tenure chosen.",
+    "category": "financing",
+    "tags": ["emi", "loan", "finance", "interest rate", "down payment"]
+  },
+  {
+    "question": "How do I book a test drive?",
+    "answer": "Booking a test drive is easy! You can: 1) Chat with us here and share your preferred date, time, and vehicle model. 2) Visit our showroom at any time during working hours (10 AM - 8 PM). 3) Request a home test drive where we bring the vehicle to your location (available in select cities). Test drives are completely free and typically last 20-30 minutes.",
+    "category": "test_drive",
+    "tags": ["test drive", "demo", "booking", "home test drive"]
+  },
+  {
+    "question": "What documents are needed for purchasing a vehicle?",
+    "answer": "To purchase a vehicle, you'll need: 1) Valid ID proof (Aadhaar/Passport/Voter ID). 2) Address proof (Aadhaar/utility bill/bank statement). 3) PAN card. 4) Income proof (salary slips for last 3 months or ITR for self-employed). 5) 6 passport-size photographs. 6) Bank statements for last 6 months (for loan applications). For exchange/trade-in, you'll also need the RC book and insurance papers of your old vehicle.",
+    "category": "purchase",
+    "tags": ["documents", "purchase", "kyc", "requirements"]
+  },
+  {
+    "question": "What is the warranty coverage?",
+    "answer": "Our vehicles come with comprehensive warranty coverage: 1) Standard warranty of 3 years or 1,00,000 km (whichever comes first). 2) Extended warranty available up to 5 years / 1,50,000 km. 3) Battery warranty for EVs: 8 years / 1,60,000 km. 4) Corrosion warranty: 5 years unlimited km. The warranty covers manufacturing defects, engine, transmission, and electrical components. Wear-and-tear items like brake pads and tyres are not covered.",
+    "category": "warranty",
+    "tags": ["warranty", "coverage", "guarantee", "extended warranty"]
+  },
+  {
+    "question": "Do you offer vehicle exchange or trade-in?",
+    "answer": "Yes! Our vehicle exchange program offers: 1) Fair market valuation of your old vehicle by certified evaluators. 2) Instant price quote based on vehicle condition, age, and mileage. 3) Exchange bonus of up to Rs 50,000 on select new models. 4) Hassle-free RC transfer assistance. 5) All brands accepted for exchange. The exchange value is adjusted against the new vehicle price, reducing your out-of-pocket cost.",
+    "category": "exchange",
+    "tags": ["exchange", "trade-in", "old car", "resale"]
+  },
+  {
+    "question": "What insurance options are available?",
+    "answer": "We offer comprehensive insurance packages: 1) Comprehensive insurance covering own damage + third-party liability. 2) Zero depreciation add-on (recommended for new vehicles). 3) Engine protection cover. 4) Roadside assistance (24x7). 5) Return to invoice cover. 6) Consumables cover. We work with top insurers like HDFC Ergo, ICICI Lombard, and Bajaj Allianz. First-year premium ranges from Rs 15,000 to Rs 45,000 based on the vehicle value.",
+    "category": "insurance",
+    "tags": ["insurance", "coverage", "premium", "zero depreciation"]
+  },
+  {
+    "question": "What is the typical delivery timeline?",
+    "answer": "Delivery timelines vary by model: 1) High-demand models: 4-8 weeks. 2) Standard models with ready stock: 1-2 weeks. 3) Custom color or variant orders: 6-12 weeks. 4) EV models: 4-10 weeks. We provide a confirmed delivery date at the time of booking. You can track your vehicle's production and transit status through our app. Priority delivery is available for an additional fee on select models.",
+    "category": "delivery",
+    "tags": ["delivery", "waiting period", "timeline", "booking"]
+  },
+  {
+    "question": "What are the service intervals and costs?",
+    "answer": "Service schedule and estimated costs: 1) First free service at 1,000 km or 1 month. 2) Second free service at 10,000 km or 1 year. 3) Regular paid services every 10,000 km or 1 year. 4) Estimated service cost: Rs 3,000-8,000 for petrol, Rs 4,000-10,000 for diesel. 5) We offer prepaid service packages with up to 20% savings. Our service centers use genuine parts with warranty, and pickup/drop service is available.",
+    "category": "service",
+    "tags": ["service", "maintenance", "cost", "schedule", "periodic"]
+  },
+  {
+    "question": "Are there any current offers or discounts?",
+    "answer": "Yes! Current offers include: 1) Festive season cash discount up to Rs 75,000 on select models. 2) Exchange bonus of Rs 25,000-50,000. 3) Corporate discount of 5-8% for employees of partner companies. 4) Loyalty discount for existing customers. 5) Free accessories worth Rs 30,000 on select variants. 6) Special interest rates starting at 7.5% through our banking partners. Offers are subject to change - ask us for the latest deals on your preferred model!",
+    "category": "offers",
+    "tags": ["discount", "offer", "deal", "price", "festive"]
+  },
+  {
+    "question": "What colors are available for each model?",
+    "answer": "Color availability varies by model and variant. Most models are available in 6-8 color options including popular choices like White, Silver, Grey, Black, Red, and Blue. Premium variants often get exclusive colors. Custom color requests may require additional waiting time of 2-4 weeks. Ask me about a specific model and I'll share all available color options with pricing details!",
+    "category": "specifications",
+    "tags": ["color", "colour", "options", "variant"]
+  },
+  {
+    "question": "Do you offer home delivery?",
+    "answer": "Yes, we offer doorstep delivery! 1) Available in all major cities within 50 km of our showrooms. 2) Vehicle is delivered with a full tank of fuel. 3) Our delivery executive will walk you through all features. 4) All documentation including registration and insurance will be handed over. 5) Home delivery is complimentary for vehicles above Rs 15 lakhs; a nominal charge of Rs 3,000 applies for others. Book your preferred delivery slot at the time of purchase.",
+    "category": "delivery",
+    "tags": ["home delivery", "doorstep", "delivery"]
+  },
+  {
+    "question": "How can I check my loan eligibility?",
+    "answer": "Checking loan eligibility is quick and easy: 1) Share your basic details (age, income, employment type). 2) We'll check eligibility across 15+ banking partners instantly. 3) Typical criteria: age 21-65 years, minimum income Rs 25,000/month for salaried or Rs 3 lakh annual profit for self-employed. 4) CIBIL score of 700+ gets the best rates. 5) Maximum loan amount: up to 100% of ex-showroom price. Pre-approval can be done in 10 minutes right here in the chat!",
+    "category": "financing",
+    "tags": ["loan", "eligibility", "cibil", "income", "criteria"]
+  },
+  {
+    "question": "What safety ratings do your vehicles have?",
+    "answer": "Safety is our top priority! Our vehicles score well on Global NCAP and Bharat NCAP crash tests: 1) Most models are rated 4-5 stars for adult occupant protection. 2) Standard safety features include dual airbags, ABS with EBD, rear parking sensors, and seatbelt reminders. 3) Higher variants offer 6 airbags, ESC, TPMS, ISOFIX child seat anchors, and ADAS (Advanced Driver Assistance Systems). Ask about a specific model for its detailed safety features and crash test ratings.",
+    "category": "safety",
+    "tags": ["safety", "airbag", "ncap", "crash test", "adas"]
+  }
+]

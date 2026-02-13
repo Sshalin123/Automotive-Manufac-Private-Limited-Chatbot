@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # Main API service
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ampl-chatbot-api
+    ports:
+      - "8000:8000"
+    environment:
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-ampl-chatbot}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - BEDROCK_EMBED_MODEL_ID=${BEDROCK_EMBED_MODEL_ID:-amazon.titan-embed-text-v2:0}
+      - BEDROCK_LLM_MODEL_ID=${BEDROCK_LLM_MODEL_ID:-us.anthropic.claude-sonnet-4-20250514-v1:0}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-bedrock}
+      - CRM_WEBHOOK_URL=${CRM_WEBHOOK_URL:-}
+      - AMPL_API_KEY=${AMPL_API_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    networks:
+      - ampl-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Ingestion worker
+  ingest-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ingest
+    container_name: ampl-chatbot-ingest
+    environment:
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-ampl-chatbot}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - BEDROCK_EMBED_MODEL_ID=${BEDROCK_EMBED_MODEL_ID:-amazon.titan-embed-text-v2:0}
+    volumes:
+      - ../data:/app/data:ro
+    networks:
+      - ampl-network
+    profiles:
+      - ingestion
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: ampl-chatbot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ampl-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL for persistent storage (optional)
+  postgres:
+    image: postgres:15-alpine
+    container_name: ampl-chatbot-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-ampl}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ampl_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-ampl_chatbot}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ampl-network
+    restart: unless-stopped
+    profiles:
+      - full
+
+networks:
+  ampl-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  postgres-data:

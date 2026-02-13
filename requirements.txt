@@ -1,0 +1,58 @@
+# AMPL Chatbot Dependencies
+
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# AWS & Bedrock
+boto3>=1.34.0
+botocore>=1.34.0
+
+# Vector Database
+pinecone-client>=3.0.0
+
+# LangChain (for document processing)
+langchain>=0.1.0
+langchain-community>=0.0.10
+langchain-text-splitters>=0.0.1
+langchain-core>=0.1.10
+
+# OpenAI (alternative provider)
+openai>=1.10.0
+
+# Document Processing
+pypdf>=4.0.0
+python-docx>=1.1.0
+unstructured>=0.12.0
+
+# HTTP Client
+httpx>=0.26.0
+aiohttp>=3.9.0
+
+# Data Processing
+pandas>=2.1.0
+numpy>=1.26.0
+
+# Utilities
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+structlog>=24.1.0
+python-multipart>=0.0.6
+
+# Validation
+email-validator>=2.1.0
+
+# Async
+asyncio>=3.4.3
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+
+# Optional: Cross-encoder reranking
+# sentence-transformers>=2.3.0
+
+# Optional: Tiktoken for token counting
+tiktoken>=0.5.0
