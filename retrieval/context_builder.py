@@ -5,7 +5,7 @@ Assembles retrieved chunks into context for LLM consumption.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass, field
 
 from .pinecone_client import SearchResult
@@ -83,7 +83,8 @@ class ContextBuilder:
         max_chunks: int = 10,
         include_sources: bool = True,
         deduplicate: bool = True,
-        similarity_threshold: float = 0.95
+        similarity_threshold: float = 0.80,
+        token_estimator: Optional[Any] = None,
     ):
         """
         Initialize the context builder.
@@ -93,13 +94,15 @@ class ContextBuilder:
             max_chunks: Maximum number of chunks
             include_sources: Include source citations
             deduplicate: Remove duplicate/similar chunks
-            similarity_threshold: Threshold for deduplication
+            similarity_threshold: Threshold for deduplication (Gap 8.3: lowered to 0.80)
+            token_estimator: Optional TokenEstimator for accurate counting (Gap 8.1)
         """
         self.max_tokens = max_tokens
         self.max_chunks = max_chunks
         self.include_sources = include_sources
         self.deduplicate = deduplicate
         self.similarity_threshold = similarity_threshold
+        self._token_estimator = token_estimator
 
     def build(
         self,
@@ -143,15 +146,20 @@ class ContextBuilder:
             if not text:
                 continue
 
-            # Estimate tokens (rough: 1 token ≈ 4 characters)
-            text_tokens = len(text) // 4
+            # Gap 8.1: Use TokenEstimator if available, else fallback
+            text_tokens = (
+                self._token_estimator.estimate(text)
+                if self._token_estimator
+                else len(text) // 4
+            )
 
             # Check if adding this would exceed limit
             if total_tokens + text_tokens > self.max_tokens:
                 # Try to add truncated version
                 remaining_tokens = self.max_tokens - total_tokens
                 if remaining_tokens > 100:
-                    text = text[:remaining_tokens * 4]
+                    chars_per_token = len(text) / text_tokens if text_tokens else 4
+                    text = text[:int(remaining_tokens * chars_per_token)]
                     text_tokens = remaining_tokens
                 else:
                     break
@@ -216,18 +224,17 @@ class ContextBuilder:
         return deduplicated
 
     def _is_similar(self, text1: str, text2: str) -> bool:
-        """Check if two texts are highly similar."""
-        # Simple overlap check
-        words1 = set(text1.lower().split())
-        words2 = set(text2.lower().split())
+        """Check if two texts are highly similar using Jaccard similarity (Gap 8.3)."""
+        words1: Set[str] = set(text1.lower().split())
+        words2: Set[str] = set(text2.lower().split())
 
         if not words1 or not words2:
             return False
 
-        overlap = len(words1 & words2)
-        smaller = min(len(words1), len(words2))
+        intersection = len(words1 & words2)
+        union = len(words1 | words2)
 
-        similarity = overlap / smaller if smaller > 0 else 0
+        similarity = intersection / union if union > 0 else 0
         return similarity > self.similarity_threshold
 
     def _sort_results(

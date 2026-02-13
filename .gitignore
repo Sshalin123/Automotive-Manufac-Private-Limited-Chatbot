@@ -77,3 +77,7 @@ credentials.json
 # Docker overrides
 docker-compose.override.yml
 .claude
+
+# Internal documents (not for repo)
+PRESENTATION_PITCH.md
+RAG_SYSTEM_GAPS.md

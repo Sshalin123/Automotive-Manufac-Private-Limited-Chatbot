@@ -39,6 +39,8 @@ class Reranker:
     - Rule-based reranking (keyword boosting, recency)
     - Cross-encoder reranking (with external model)
     - LLM-based reranking
+    - Intent-aware type priority boosting
+    - Entity-aware exact-match boosting
     """
 
     # Keyword boost factors
@@ -57,6 +59,25 @@ class Reranker:
         "warranty": 1.2,
         "service": 1.1,
         "exchange": 1.2,
+    }
+
+    # Intent-to-document-type priority boosts
+    INTENT_TYPE_PRIORITY = {
+        "buy": {"inventory": 1.3, "sales": 1.1, "faq": 1.0, "insurance": 0.9},
+        "finance": {"sales": 1.3, "faq": 1.1, "inventory": 0.9},
+        "test_drive": {"inventory": 1.2, "sales": 1.1, "faq": 1.0},
+        "exchange": {"inventory": 1.2, "sales": 1.1, "faq": 1.0},
+        "insurance": {"insurance": 1.3, "faq": 1.1, "sales": 0.9},
+        "service": {"faq": 1.2, "sales": 1.0},
+        "service_reminder": {"faq": 1.2, "sales": 1.0},
+        "complaint": {"faq": 1.2},
+        "escalation": {"faq": 1.2},
+        "info": {"faq": 1.2, "inventory": 1.1, "sales": 1.0},
+        "comparison": {"inventory": 1.3, "faq": 1.1},
+        "booking_confirm": {"sales": 1.2, "faq": 1.0},
+        "payment_confirm": {"sales": 1.2, "faq": 1.0},
+        "delivery_update": {"sales": 1.1, "faq": 1.0},
+        "feedback": {"faq": 1.1},
     }
 
     def __init__(
@@ -101,7 +122,9 @@ class Reranker:
         self,
         query: str,
         results: List[SearchResult],
-        top_k: Optional[int] = None
+        top_k: Optional[int] = None,
+        intent: Optional[str] = None,
+        entities: Optional[Any] = None,
     ) -> List[RerankedResult]:
         """
         Rerank search results.
@@ -110,6 +133,8 @@ class Reranker:
             query: Original query
             results: Search results to rerank
             top_k: Number of results to return
+            intent: Classified intent (e.g. "buy", "finance") for type-priority boosting
+            entities: Extracted entities for exact-match boosting
 
         Returns:
             Reranked results
@@ -122,7 +147,7 @@ class Reranker:
         elif self.reranker_type == RerankerType.LLM_BASED:
             reranked = self._rerank_llm(query, results)
         else:
-            reranked = self._rerank_rule_based(query, results)
+            reranked = self._rerank_rule_based(query, results, intent=intent, entities=entities)
 
         # Sort by combined score
         reranked.sort(key=lambda x: x.combined_score, reverse=True)
@@ -135,11 +160,16 @@ class Reranker:
     def _rerank_rule_based(
         self,
         query: str,
-        results: List[SearchResult]
+        results: List[SearchResult],
+        intent: Optional[str] = None,
+        entities: Optional[Any] = None,
     ) -> List[RerankedResult]:
-        """Rule-based reranking with keyword boosting."""
+        """Rule-based reranking with keyword, intent-type, and entity boosting."""
         query_lower = query.lower()
         query_words = set(query_lower.split())
+
+        # Look up intent-specific type priorities
+        intent_priorities = self.INTENT_TYPE_PRIORITY.get(intent, {}) if intent else {}
 
         reranked = []
 
@@ -150,13 +180,13 @@ class Reranker:
             text_lower = result.text.lower()
             metadata = result.metadata
 
-            # Keyword matching boost
+            # 1. Keyword matching boost
             for keyword, boost_factor in self.BOOST_KEYWORDS.items():
                 if keyword in query_lower and keyword in text_lower:
                     boost *= boost_factor
                     boost_reasons.append(f"keyword:{keyword}")
 
-            # Query word overlap boost
+            # 2. Query word overlap boost
             text_words = set(text_lower.split())
             overlap = len(query_words & text_words)
             overlap_ratio = overlap / len(query_words) if query_words else 0
@@ -165,19 +195,59 @@ class Reranker:
                 boost *= (1 + overlap_ratio * 0.3)
                 boost_reasons.append(f"overlap:{overlap_ratio:.2f}")
 
-            # Document type priority
+            # 3. Intent-aware document type priority (replaces static type priority)
             doc_type = metadata.get("document_type", "")
-            if doc_type == "faq":
-                boost *= 1.2
-                boost_reasons.append("type:faq")
-            elif doc_type == "inventory":
-                boost *= 1.1
-                boost_reasons.append("type:inventory")
+            namespace = metadata.get("namespace", "")
+            type_key = doc_type or namespace
 
-            # Recency boost (if timestamp available)
+            if intent_priorities and type_key in intent_priorities:
+                type_boost = intent_priorities[type_key]
+                boost *= type_boost
+                boost_reasons.append(f"intent-type:{type_key}={type_boost}")
+            else:
+                # Default type priority when no intent available
+                if doc_type == "faq":
+                    boost *= 1.2
+                    boost_reasons.append("type:faq")
+                elif doc_type == "inventory":
+                    boost *= 1.1
+                    boost_reasons.append("type:inventory")
+
+            # 4. Entity exact-match boosting
+            if entities:
+                # Model name match
+                models = getattr(entities, "models_mentioned", None) or []
+                for model in models:
+                    if model.lower() in text_lower:
+                        boost *= 1.4
+                        boost_reasons.append(f"entity-model:{model}")
+                        break  # Only apply once
+
+                # Variant match
+                variants = getattr(entities, "variants_mentioned", None) or []
+                for variant in variants:
+                    if variant.lower() in text_lower:
+                        boost *= 1.5
+                        boost_reasons.append(f"entity-variant:{variant}")
+                        break
+
+                # Color match
+                colors = getattr(entities, "colors_mentioned", None) or []
+                for color in colors:
+                    if color.lower() in text_lower:
+                        boost *= 1.2
+                        boost_reasons.append(f"entity-color:{color}")
+                        break
+
+                # Fuel type match
+                fuel = getattr(entities, "fuel_type", None)
+                if fuel and fuel.lower() in text_lower:
+                    boost *= 1.2
+                    boost_reasons.append(f"entity-fuel:{fuel}")
+
+            # 5. Recency boost (if timestamp available)
             ingested_at = metadata.get("ingested_at")
             if ingested_at:
-                # Simple recency check - newer is better
                 boost *= 1.05
                 boost_reasons.append("recent")
 

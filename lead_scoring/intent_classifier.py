@@ -70,97 +70,149 @@ class IntentClassifier:
     classification and LLM analysis for complex cases.
     """
 
-    # Intent keywords for rule-based classification
+    # Intent keywords for rule-based classification (includes Hinglish — Gap 6.2)
     INTENT_KEYWORDS = {
         Intent.BUY: [
             "buy", "purchase", "book", "booking", "order", "ready to buy",
             "want to buy", "looking to buy", "interested in buying",
             "finalize", "confirm order", "place order", "take delivery",
             "best price", "final price", "negotiate", "discount for buying",
+            # Hinglish (Gap 6.2)
+            "khareedna", "kharidna", "lena chahiye", "lena hai", "book karo",
+            "book karni", "gaadi leni", "gaadi chahiye", "le lunga", "lena chahunga",
+            "kab mil sakti", "ready hu", "order kardo",
         ],
         Intent.FINANCE: [
             "emi", "loan", "finance", "financing", "interest rate",
             "down payment", "monthly payment", "installment", "credit",
             "bank loan", "nbfc", "car loan", "auto loan", "tenure",
             "pre-approved", "loan eligibility", "emi calculator",
+            # Hinglish
+            "emi kitna", "emi kitni", "loan chahiye", "kist", "byaj",
+            "byaj dar", "down payment kitna", "mahine ki kist",
+            "loan milega", "finance karwana",
         ],
         Intent.TEST_DRIVE: [
             "test drive", "test-drive", "demo", "try the car",
             "drive the car", "experience", "feel of the car",
             "book test drive", "schedule test drive", "home test drive",
             "want to drive", "can i drive",
+            # Hinglish
+            "td book", "gaadi chalani hai", "gaadi chala ke dekh",
+            "test drive kab", "ghar pe test drive", "demo dikhao",
+            "chalake dekhna hai",
         ],
         Intent.SERVICE: [
             "service", "servicing", "maintenance", "repair", "fix",
             "service center", "workshop", "oil change", "tyre",
             "brake", "ac service", "free service", "paid service",
             "service cost", "service schedule", "recall",
+            # Hinglish
+            "service kab", "service karwani", "repair karwana",
+            "gaadi kharab", "service center kahan", "free service kab",
+            "oil change karwana", "tyre badalna",
         ],
         Intent.EXCHANGE: [
             "exchange", "trade-in", "trade in", "old car", "sell my car",
             "exchange value", "exchange bonus", "replace my car",
             "part exchange", "exchange offer",
+            # Hinglish
+            "purani gaadi dena", "purani gaadi exchange", "badli karni",
+            "exchange mein dena", "purani car ki value",
         ],
         Intent.INSURANCE: [
             "insurance", "insure", "coverage", "claim", "ncb",
             "zero dep", "depreciation", "premium", "policy",
             "renew insurance", "transfer insurance",
+            # Hinglish
+            "bima", "insurance kitna", "claim kaise", "insurance renew",
+            "policy transfer",
         ],
         Intent.COMPLAINT: [
             "complaint", "issue", "problem", "not working", "defect",
             "unhappy", "dissatisfied", "disappointed", "bad experience",
             "escalate", "manager", "consumer court",
+            # Hinglish
+            "shikayat", "dikkat", "pareshani", "kharab experience",
+            "manager se baat", "complaint karna", "theek nahi",
         ],
         Intent.BOOKING_CONFIRM: [
             "booking confirmed", "confirm booking", "booking done",
             "booked", "booking status", "my booking", "booking details",
             "advance paid", "token paid",
+            # Hinglish
+            "booking ho gayi", "booking confirm hai", "advance diya",
+            "token de diya", "booking ka status",
         ],
         Intent.PAYMENT_CONFIRM: [
             "payment received", "amount received", "yes received",
             "no not received", "payment mismatch", "wrong amount",
             "receipt", "payment status", "payment confirmation",
+            # Hinglish
+            "payment mil gaya", "paisa mila", "rashi nahi mili",
+            "galat amount", "payment ka status",
         ],
         Intent.SERVICE_REMINDER: [
             "service due", "service reminder", "when is my service",
             "next service", "free service", "service booking",
             "book service", "schedule service",
+            # Hinglish
+            "service kab hai", "agla service", "free service kab",
+            "service book karo", "service yaad dilao",
         ],
         Intent.FEEDBACK: [
             "feedback", "rating", "review", "experience was",
             "satisfied", "happy with", "recommend", "nps",
             "poor", "fair", "very good", "excellent",
+            # Hinglish
+            "kaisa laga", "experience kaisa tha", "accha laga",
+            "bura laga", "rating dena", "review dena",
         ],
         Intent.ESCALATION: [
             "escalate", "escalation", "speak to manager",
             "higher authority", "not resolved", "unresolved",
             "need help urgently", "still waiting",
+            # Hinglish
+            "manager se baat karo", "upar wale se baat",
+            "abhi tak nahi hua", "jaldi karo", "bahut wait ho gaya",
         ],
         Intent.DELIVERY_UPDATE: [
             "delivery status", "when will i get", "delivery date",
             "car ready", "delivery delay", "dispatch status",
             "allotment status", "when delivery",
+            # Hinglish
+            "delivery kab", "gaadi kab milegi", "kab tak aayegi",
+            "allotment hua", "dispatch hua", "gaadi ready hai",
         ],
     }
 
-    # Timeline keywords
+    # Timeline keywords (includes Hinglish — Gap 6.2)
     TIMELINE_KEYWORDS = {
         Timeline.IMMEDIATE: [
             "today", "tomorrow", "this week", "asap", "immediately",
             "urgent", "right away", "as soon as", "next day",
+            # Hinglish
+            "aaj", "kal", "abhi", "turant", "jaldi", "fatafat",
         ],
         Timeline.THIS_MONTH: [
             "this month", "within a month", "next week", "soon",
             "in a few days", "this weekend",
+            # Hinglish
+            "is mahine", "agla hafta", "kuch din mein", "jaldi hi",
         ],
         Timeline.THIS_QUARTER: [
             "next month", "in 2 months", "next quarter", "few months",
             "planning", "thinking about",
+            # Hinglish
+            "agla mahina", "do mahine", "soch raha", "plan hai",
         ],
         Timeline.EXPLORING: [
             "just looking", "exploring", "researching", "comparing",
             "not sure", "sometime", "in the future", "maybe",
             "just checking", "curious",
+            # Hinglish
+            "bas dekh raha", "compare kar raha", "pata nahi",
+            "baad mein", "kabhi", "sochu", "dekhte hain",
         ],
     }
 
@@ -177,14 +229,16 @@ class IntentClassifier:
         "just information", "no salesperson",
     ]
 
-    def __init__(self, llm_client: Optional[Any] = None):
+    def __init__(self, llm_client: Optional[Any] = None, llm_model_id: Optional[str] = None):
         """
         Initialize the intent classifier.
 
         Args:
             llm_client: Optional LLM client for advanced classification
+            llm_model_id: Model ID for LLM calls
         """
         self.llm_client = llm_client
+        self._llm_model_id = llm_model_id
 
     def classify(
         self,
@@ -325,13 +379,55 @@ class IntentClassifier:
             return None
 
         prompt = self._build_classification_prompt(message, conversation_history)
+        system = "You are an automotive dealership intent classification engine. Return only valid JSON."
 
         try:
-            # This would call the LLM client
-            # response = self.llm_client.generate(prompt)
-            # result = self._parse_llm_response(response)
-            # return result
-            pass
+            response_text = None
+
+            # Detect client type and call accordingly
+            client_type = type(self.llm_client).__name__
+
+            if client_type == "OpenAI":
+                # OpenAI client
+                response = self.llm_client.chat.completions.create(
+                    model=self._llm_model_id or "gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=256,
+                    temperature=0.1,
+                )
+                response_text = response.choices[0].message.content
+
+            else:
+                # Bedrock client
+                import json as _json
+                body = _json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 256,
+                    "temperature": 0.1,
+                    "system": system,
+                    "messages": [
+                        {"role": "user", "content": [{"type": "text", "text": prompt}]}
+                    ]
+                })
+                response = self.llm_client.invoke_model(
+                    modelId=self._llm_model_id or "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    body=body,
+                    contentType="application/json",
+                    accept="application/json",
+                )
+                response_body = _json.loads(response["body"].read())
+                if "content" in response_body and response_body["content"]:
+                    response_text = response_body["content"][0]["text"]
+
+            if response_text:
+                result = self._parse_llm_response(response_text)
+                if result:
+                    logger.debug(f"LLM classified intent: {result.primary_intent.value} (conf={result.confidence})")
+                return result
+
         except Exception as e:
             logger.error(f"LLM classification failed: {e}")
             return None

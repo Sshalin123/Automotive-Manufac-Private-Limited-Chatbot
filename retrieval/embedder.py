@@ -4,14 +4,56 @@ Embedding Service for AMPL Chatbot.
 Generates embeddings using AWS Bedrock or OpenAI.
 """
 
+import hashlib
 import json
 import logging
+from collections import OrderedDict
 from enum import Enum
-from typing import List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 import asyncio
 
 logger = logging.getLogger(__name__)
+
+
+class EmbeddingCache:
+    """
+    In-memory LRU cache for embeddings (Gap 5.2).
+
+    Key: MD5 hash of normalized query text.
+    Value: embedding vector.
+    """
+
+    def __init__(self, maxsize: int = 2000):
+        self.maxsize = maxsize
+        self._cache: OrderedDict[str, List[float]] = OrderedDict()
+        self.hits = 0
+        self.misses = 0
+
+    def _make_key(self, text: str) -> str:
+        normalized = text.strip().lower()
+        return hashlib.md5(normalized.encode()).hexdigest()
+
+    def get(self, text: str) -> Optional[List[float]]:
+        key = self._make_key(text)
+        if key in self._cache:
+            self._cache.move_to_end(key)
+            self.hits += 1
+            return self._cache[key]
+        self.misses += 1
+        return None
+
+    def put(self, text: str, embedding: List[float]) -> None:
+        key = self._make_key(text)
+        if key in self._cache:
+            self._cache.move_to_end(key)
+        else:
+            if len(self._cache) >= self.maxsize:
+                self._cache.popitem(last=False)
+        self._cache[key] = embedding
+
+    def stats(self) -> Dict[str, int]:
+        return {"size": len(self._cache), "hits": self.hits, "misses": self.misses}
 
 
 class EmbeddingProvider(Enum):
@@ -42,16 +84,18 @@ class EmbeddingService:
     - Caching (optional)
     """
 
-    def __init__(self, config: Optional[EmbeddingConfig] = None):
+    def __init__(self, config: Optional[EmbeddingConfig] = None, cache_size: int = 0):
         """
         Initialize the embedding service.
 
         Args:
             config: Embedding configuration
+            cache_size: If > 0, enable LRU embedding cache (Gap 5.2)
         """
         self.config = config or EmbeddingConfig()
         self._client = None
         self._openai_client = None
+        self._cache: Optional[EmbeddingCache] = EmbeddingCache(cache_size) if cache_size > 0 else None
 
         self._initialize_client()
 
@@ -87,7 +131,7 @@ class EmbeddingService:
 
     async def embed_text(self, text: str) -> List[float]:
         """
-        Generate embedding for a single text.
+        Generate embedding for a single text (with optional cache — Gap 5.2).
 
         Args:
             text: Input text
@@ -95,12 +139,24 @@ class EmbeddingService:
         Returns:
             Embedding vector
         """
+        # Check cache first
+        if self._cache:
+            cached = self._cache.get(text)
+            if cached is not None:
+                return cached
+
         if self.config.provider == EmbeddingProvider.BEDROCK_TITAN:
-            return await self._embed_bedrock(text)
+            result = await self._embed_bedrock(text)
         elif self.config.provider == EmbeddingProvider.OPENAI:
-            return await self._embed_openai(text)
+            result = await self._embed_openai(text)
         else:
             raise ValueError(f"Unsupported provider: {self.config.provider}")
+
+        # Store in cache
+        if self._cache:
+            self._cache.put(text, result)
+
+        return result
 
     async def embed_texts(self, texts: List[str]) -> List[List[float]]:
         """

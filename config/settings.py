@@ -55,6 +55,25 @@ class Settings(BaseSettings):
     top_k: int = Field(default=5, env="TOP_K")
     similarity_threshold: float = Field(default=0.5, env="SIMILARITY_THRESHOLD")
 
+    # RAG Optimization Feature Flags
+    enable_reranker: bool = Field(default=True, env="ENABLE_RERANKER")
+    enable_namespace_routing: bool = Field(default=True, env="ENABLE_NAMESPACE_ROUTING")
+    enable_query_preprocessing: bool = Field(default=True, env="ENABLE_QUERY_PREPROCESSING")
+    enable_hinglish_expansion: bool = Field(default=True, env="ENABLE_HINGLISH_EXPANSION")
+    enable_conversation_aware_retrieval: bool = Field(default=True, env="ENABLE_CONVERSATION_AWARE_RETRIEVAL")
+    enable_adaptive_thresholds: bool = Field(default=True, env="ENABLE_ADAPTIVE_THRESHOLDS")
+    enable_parallel_pipeline: bool = Field(default=True, env="ENABLE_PARALLEL_PIPELINE")
+    enable_query_decomposition: bool = Field(default=False, env="ENABLE_QUERY_DECOMPOSITION")  # off by default, advanced
+    enable_hybrid_search: bool = Field(default=True, env="ENABLE_HYBRID_SEARCH")
+    enable_llm_intent_fallback: bool = Field(default=False, env="ENABLE_LLM_INTENT_FALLBACK")  # off by default, costs LLM calls
+    max_sub_queries: int = Field(default=4, env="MAX_SUB_QUERIES")
+
+    # Adaptive threshold levels
+    similarity_threshold_high: float = Field(default=0.45, env="SIMILARITY_THRESHOLD_HIGH")
+    similarity_threshold_medium: float = Field(default=0.35, env="SIMILARITY_THRESHOLD_MEDIUM")
+    similarity_threshold_low: float = Field(default=0.25, env="SIMILARITY_THRESHOLD_LOW")
+    similarity_threshold_fallback: float = Field(default=0.15, env="SIMILARITY_THRESHOLD_FALLBACK")
+
     # Lead scoring
     lead_score_threshold_hot: int = Field(default=70, env="LEAD_SCORE_THRESHOLD_HOT")
     lead_score_threshold_warm: int = Field(default=50, env="LEAD_SCORE_THRESHOLD_WARM")
@@ -65,11 +84,41 @@ class Settings(BaseSettings):
     crm_api_key: Optional[str] = Field(default=None, env="CRM_API_KEY")
     crm_provider: str = Field(default="custom", env="CRM_PROVIDER")
 
-    # Database
+    # Database (Gap 14.1)
     database_url: Optional[str] = Field(default=None, env="DATABASE_URL")
+    db_pool_size: int = Field(default=5, env="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=10, env="DB_MAX_OVERFLOW")
 
     # Redis
     redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+
+    # Embedding cache (Gap 5.2)
+    enable_embedding_cache: bool = Field(default=True, env="ENABLE_EMBEDDING_CACHE")
+    embedding_cache_size: int = Field(default=2000, env="EMBEDDING_CACHE_SIZE")
+
+    # JWT Auth (Gap 14.2)
+    jwt_secret_key: str = Field(default="change-me-in-production", env="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
+    jwt_expire_minutes: int = Field(default=60, env="JWT_EXPIRE_MINUTES")
+    rate_limit_per_minute: int = Field(default=100, env="RATE_LIMIT_PER_MINUTE")
+
+    # WhatsApp (Gap 14.4)
+    whatsapp_provider: str = Field(default="meta", env="WHATSAPP_PROVIDER")  # meta | gupshup
+    whatsapp_api_token: Optional[str] = Field(default=None, env="WHATSAPP_API_TOKEN")
+    whatsapp_phone_number_id: Optional[str] = Field(default=None, env="WHATSAPP_PHONE_NUMBER_ID")
+    whatsapp_verify_token: Optional[str] = Field(default=None, env="WHATSAPP_VERIFY_TOKEN")
+    gupshup_api_key: Optional[str] = Field(default=None, env="GUPSHUP_API_KEY")
+    gupshup_app_name: Optional[str] = Field(default=None, env="GUPSHUP_APP_NAME")
+
+    # Email (Gap 14.4)
+    email_provider: str = Field(default="sendgrid", env="EMAIL_PROVIDER")  # sendgrid | ses
+    sendgrid_api_key: Optional[str] = Field(default=None, env="SENDGRID_API_KEY")
+    ses_region: str = Field(default="us-east-1", env="SES_REGION")
+    email_from_address: str = Field(default="", env="EMAIL_FROM_ADDRESS")
+    email_from_name: str = Field(default="AMPL", env="EMAIL_FROM_NAME")
+
+    # CORS
+    cors_origins: str = Field(default="*", env="CORS_ORIGINS")
 
     # API
     api_host: str = Field(default="0.0.0.0", env="API_HOST")
@@ -143,6 +192,12 @@ class Settings(BaseSettings):
     @property
     def followup_intervals_list(self) -> List[int]:
         return json.loads(self.followup_intervals)
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        if self.cors_origins == "*":
+            return ["*"]
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 @lru_cache()

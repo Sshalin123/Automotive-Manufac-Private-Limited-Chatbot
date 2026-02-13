@@ -182,6 +182,49 @@ class EntityExtractor:
         "blind spot monitor", "lane assist", "heated seats", "cooled seats",
     ]
 
+    # ── Hindi / Devanagari Maps (Gap 7.2) ────────────────────────────
+
+    HINDI_CITY_MAP = {
+        "दिल्ली": "delhi", "मुंबई": "mumbai", "बेंगलुरु": "bangalore",
+        "बैंगलोर": "bangalore", "चेन्नई": "chennai", "कोलकाता": "kolkata",
+        "हैदराबाद": "hyderabad", "पुणे": "pune", "अहमदाबाद": "ahmedabad",
+        "जयपुर": "jaipur", "लखनऊ": "lucknow", "कानपुर": "kanpur",
+        "नागपुर": "nagpur", "इंदौर": "indore", "भोपाल": "bhopal",
+        "पटना": "patna", "वाराणसी": "varanasi", "आगरा": "agra",
+        "नोएडा": "noida", "गुड़गांव": "gurgaon",
+    }
+
+    HINDI_COLOR_MAP = {
+        "लाल": "red", "नीला": "blue", "सफेद": "white", "काला": "black",
+        "हरा": "green", "पीला": "yellow", "भूरा": "brown", "स्लेटी": "grey",
+        "चांदी": "silver", "नारंगी": "orange", "मैरून": "maroon",
+    }
+
+    HINDI_FUEL_MAP = {
+        "डीजल": "diesel", "पेट्रोल": "petrol", "बिजली": "electric",
+        "इलेक्ट्रिक": "electric", "सीएनजी": "cng", "हाइब्रिड": "hybrid",
+    }
+
+    HINDI_DIGIT_MAP = {
+        "०": "0", "१": "1", "२": "2", "३": "3", "४": "4",
+        "५": "5", "६": "6", "७": "7", "८": "8", "९": "9",
+    }
+
+    # Automotive context words for budget assumption guard (Gap 7.3)
+    AUTOMOTIVE_CONTEXT = {
+        "car", "vehicle", "gaadi", "gadi", "bike", "scooter", "price",
+        "cost", "rate", "emi", "loan", "finance", "budget", "lakh",
+        "keemat", "kimat", "kitna", "showroom", "dealer", "on-road",
+        "ex-showroom",
+    }
+
+    # Phone negative-context words (Gap 7.4)
+    PHONE_NEGATIVE_CONTEXT = {
+        "pin", "zip", "model", "year", "cc", "bhp", "rpm", "km",
+        "hp", "torque", "nm", "kmpl", "mileage", "engine", "price",
+        "rs", "inr", "₹",
+    }
+
     def __init__(self, vehicle_models: Optional[List[str]] = None):
         """
         Initialize the entity extractor.
@@ -245,6 +288,34 @@ class EntityExtractor:
         # Seating pattern
         self.seating_pattern = re.compile(
             r'(\d+)\s*(?:seater|seat|seats|passenger)',
+            re.IGNORECASE
+        )
+
+        # Pre-compiled word-boundary patterns (Gap 7.1)
+        self._feature_patterns = {
+            f: re.compile(rf'\b{re.escape(f)}\b', re.IGNORECASE)
+            for f in self.FEATURES
+        }
+        self._fuel_patterns = {
+            f: re.compile(rf'\b{re.escape(f)}\b', re.IGNORECASE)
+            for f in self.FUEL_TYPES
+        }
+        self._city_patterns = {
+            c: re.compile(rf'\b{re.escape(c)}\b', re.IGNORECASE)
+            for c in self.MAJOR_CITIES
+        }
+        self._color_patterns = {
+            c: re.compile(rf'\b{re.escape(c)}\b', re.IGNORECASE)
+            for c in self.COLORS
+        }
+        self._brand_patterns = {
+            b: re.compile(rf'\b{re.escape(b)}\b', re.IGNORECASE)
+            for b in self.BRANDS
+        }
+
+        # Hindi budget pattern (Gap 7.2)
+        self._hindi_budget_pattern = re.compile(
+            r'(\d+(?:\.\d+)?|[०-९]+(?:\.[०-९]+)?)\s*(?:लाख|लाक|करोड़|crore)',
             re.IGNORECASE
         )
 
@@ -316,18 +387,26 @@ class EntityExtractor:
         return entities
 
     def _extract_phones(self, message: str) -> List[str]:
-        """Extract phone numbers from message."""
+        """Extract phone numbers with context-aware filtering (Gap 7.4)."""
         matches = self.phone_pattern.findall(message)
-        # Clean and normalize phone numbers
+        message_lower = message.lower()
         phones = []
         for match in matches:
-            # Remove spaces and dashes
             clean = re.sub(r'[\s-]', '', match)
-            # Remove +91 prefix if present
             if clean.startswith('+91'):
                 clean = clean[3:]
-            if len(clean) == 10 and clean.isdigit():
-                phones.append(clean)
+            if len(clean) != 10 or not clean.isdigit():
+                continue
+            # Gap 7.4: Must start with 6-9 for Indian mobile numbers
+            if clean[0] not in '6789':
+                continue
+            # Gap 7.4: Check negative context — reject if preceded by technical terms
+            start_idx = message.find(match)
+            if start_idx > 0:
+                preceding = message_lower[max(0, start_idx - 15):start_idx].strip()
+                if any(preceding.endswith(neg) for neg in self.PHONE_NEGATIVE_CONTEXT):
+                    continue
+            phones.append(clean)
         return list(set(phones))
 
     def _extract_emails(self, message: str) -> List[str]:
@@ -366,11 +445,18 @@ class EntityExtractor:
                 elif 'lakh' in match_text or 'lac' in match_text or match_text.endswith('l'):
                     value *= 100000  # Lakh to rupees
 
-                # If no unit and value is small, assume lakh
+                # Gap 7.3: Only assume lakh if automotive context present
                 elif value < 1000:
-                    value *= 100000
+                    if self._has_automotive_context(message):
+                        value *= 100000
+                    # Otherwise keep raw value (don't assume unit)
 
                 return value, None, match.group(0)
+
+        # Gap 7.2: Try Hindi budget extraction
+        hindi_result = self._extract_hindi_budget(message)
+        if hindi_result[0] is not None:
+            return hindi_result
 
         return None, None, None
 
@@ -383,28 +469,32 @@ class EntityExtractor:
         return found
 
     def _extract_fuel_types(self, message_lower: str) -> List[str]:
-        """Extract fuel types from message."""
+        """Extract fuel types with word-boundary matching (Gap 7.1)."""
         found = []
-        for fuel in self.FUEL_TYPES:
-            if fuel in message_lower:
+        for fuel, pattern in self._fuel_patterns.items():
+            if pattern.search(message_lower):
                 found.append(fuel)
+        # Gap 7.2: Hindi fuel types
+        for hindi, english in self.HINDI_FUEL_MAP.items():
+            if hindi in message_lower and english not in found:
+                found.append(english)
         return found
 
     def _extract_models(self, message_lower: str) -> List[str]:
-        """Extract vehicle models from message."""
+        """Extract vehicle models with word-boundary matching (Gap 7.1)."""
         found = []
 
         # Check known models
         for model in self.vehicle_models:
-            if model.lower() in message_lower:
+            if re.search(rf'\b{re.escape(model.lower())}\b', message_lower):
                 found.append(model)
 
-        # Check brand names
-        for brand in self.BRANDS:
-            if brand in message_lower:
+        # Check brand names with word boundaries
+        for brand, pattern in self._brand_patterns.items():
+            if pattern.search(message_lower):
                 # Try to extract model name after brand
-                pattern = rf'{brand}\s+(\w+)'
-                match = re.search(pattern, message_lower)
+                model_pat = rf'\b{re.escape(brand)}\s+(\w+)'
+                match = re.search(model_pat, message_lower)
                 if match:
                     found.append(f"{brand.title()} {match.group(1).title()}")
                 else:
@@ -413,10 +503,14 @@ class EntityExtractor:
         return list(set(found))
 
     def _extract_city(self, message_lower: str) -> Optional[str]:
-        """Extract city from message."""
-        for city in self.MAJOR_CITIES:
-            if city in message_lower:
+        """Extract city with word-boundary matching + Hindi support (Gap 7.1, 7.2)."""
+        for city, pattern in self._city_patterns.items():
+            if pattern.search(message_lower):
                 return city.title()
+        # Gap 7.2: Hindi city names
+        for hindi, english in self.HINDI_CITY_MAP.items():
+            if hindi in message_lower:
+                return english.title()
         return None
 
     def _extract_pincode(self, message: str) -> Optional[str]:
@@ -425,10 +519,14 @@ class EntityExtractor:
         return match.group(0) if match else None
 
     def _extract_color(self, message_lower: str) -> Optional[str]:
-        """Extract color preference from message."""
-        for color in self.COLORS:
-            if color in message_lower:
+        """Extract color with word-boundary matching + Hindi support (Gap 7.1, 7.2)."""
+        for color, pattern in self._color_patterns.items():
+            if pattern.search(message_lower):
                 return color.title()
+        # Gap 7.2: Hindi color names
+        for hindi, english in self.HINDI_COLOR_MAP.items():
+            if hindi in message_lower:
+                return english.title()
         return None
 
     def _extract_seating(self, message_lower: str) -> Optional[int]:
@@ -448,10 +546,10 @@ class EntityExtractor:
         return None
 
     def _extract_features(self, message_lower: str) -> List[str]:
-        """Extract requested features from message."""
+        """Extract features with word-boundary matching (Gap 7.1)."""
         found = []
-        for feature in self.FEATURES:
-            if feature in message_lower:
+        for feature, pattern in self._feature_patterns.items():
+            if pattern.search(message_lower):
                 found.append(feature)
         return found
 
@@ -661,6 +759,44 @@ class EntityExtractor:
                 if 0 <= score <= 10:
                     return score
         return None
+
+    # ── Hindi / Context Helpers (Gap 7.2, 7.3) ────────────────────
+
+    def _has_automotive_context(self, message: str) -> bool:
+        """Check if message has automotive context words (Gap 7.3)."""
+        message_lower = message.lower()
+        # Check context words
+        if any(word in message_lower for word in self.AUTOMOTIVE_CONTEXT):
+            return True
+        # Check if any known model/brand is mentioned
+        for brand_pattern in self._brand_patterns.values():
+            if brand_pattern.search(message_lower):
+                return True
+        for model in self.vehicle_models:
+            if model.lower() in message_lower:
+                return True
+        return False
+
+    def _extract_hindi_budget(self, message: str) -> Tuple[Optional[float], Optional[float], Optional[str]]:
+        """Extract budget from Hindi/Devanagari text (Gap 7.2)."""
+        match = self._hindi_budget_pattern.search(message)
+        if not match:
+            return None, None, None
+
+        num_str = match.group(1)
+        # Convert Devanagari digits to ASCII
+        for hindi_d, ascii_d in self.HINDI_DIGIT_MAP.items():
+            num_str = num_str.replace(hindi_d, ascii_d)
+
+        value = float(num_str)
+        match_text = match.group(0)
+
+        if "करोड़" in match_text or "crore" in match_text.lower():
+            value *= 10000000
+        else:  # लाख / लाक
+            value *= 100000
+
+        return value, None, match_text
 
     def _calculate_confidence(self, entities: ExtractedEntities) -> float:
         """Calculate extraction confidence score."""

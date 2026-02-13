@@ -29,11 +29,12 @@ class TestContextBuilder:
 class TestReranker:
     def test_rule_based_rerank(self):
         reranker = Reranker()
+        # Create mock SearchResult objects
         results = [
-            {"id": "1", "text": "General information about cars.", "score": 0.8},
-            {"id": "2", "text": "The price of this vehicle is 15 lakhs with EMI options.", "score": 0.75},
+            type("SearchResult", (), {"id": "1", "text": "General information about cars.", "score": 0.8, "metadata": {}, "source": "", "text_preview": "General information about cars."})(),
+            type("SearchResult", (), {"id": "2", "text": "The price of this vehicle is 15 lakhs with EMI options.", "score": 0.75, "metadata": {}, "source": "", "text_preview": "The price of this vehicle is 15 lakhs with EMI options."})(),
         ]
-        reranked = reranker.rerank(results, query="What is the price?", method="rule_based")
+        reranked = reranker.rerank(query="What is the price?", results=results)
         assert len(reranked) == 2
         # The result mentioning "price" should be boosted
-        assert reranked[0]["id"] == "2"
+        assert reranked[0].original.id == "2"

@@ -47,12 +47,27 @@ email-validator>=2.1.0
 # Async
 asyncio>=3.4.3
 
+# Database (Gap 14.1)
+sqlalchemy[asyncio]>=2.0.25
+asyncpg>=0.29.0
+alembic>=1.13.0
+
+# Auth (Gap 14.2)
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Monitoring (Gap 9.4)
+prometheus-client>=0.20.0
+
+# Real-time (Gap 14.3)
+sse-starlette>=1.8.0
+
+# Token counting (Gap 8.1)
+tiktoken>=0.5.0
+
 # Testing
 pytest>=7.4.0
 pytest-asyncio>=0.23.0
 
 # Optional: Cross-encoder reranking
 # sentence-transformers>=2.3.0
-
-# Optional: Tiktoken for token counting
-tiktoken>=0.5.0
