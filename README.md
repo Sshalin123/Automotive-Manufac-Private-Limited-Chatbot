@@ -27,6 +27,21 @@ An AI-powered chatbot for automotive sales with RAG (Retrieval-Augmented Generat
 - **Scheduled Messaging**: Follow-ups (N+0/N+1/N+15), service reminders, SLA checks
 - **Mock Fallback**: Works when LLM services are unavailable
 
+### Enterprise Modules
+- **Database Layer**: SQLAlchemy async ORM with PostgreSQL (AsyncPG), Alembic migrations, repository pattern for conversations, leads, and messages
+- **Authentication & Authorization**: JWT-based auth with role-based access control (admin/agent/viewer), secure password hashing via Passlib+bcrypt
+- **Analytics Collector**: Real-time metrics for conversations, leads, intents, and feedback — with time-range filtering and aggregation
+- **Multi-Channel Messaging**: WhatsApp Business API integration and Email (SendGrid/AWS SES) with unified channel abstraction
+- **Real-Time Communication**: WebSocket and SSE (Server-Sent Events) for live chat streaming, connection management with heartbeat
+- **Human Handoff**: Seamless escalation from AI to human agents with queue management and resolution tracking
+- **A/B Experiments**: Prompt and model variant testing with traffic splitting, metric collection, and statistical analysis
+- **GDPR Compliance**: Data export (JSON), data erasure, and full audit logging for regulatory compliance
+- **Multi-Tenant Support**: Tenant isolation with per-tenant configuration, usage tracking, and scoped data access
+- **Knowledge Management**: Document versioning, ingestion status tracking, scheduled refresh, and document lifecycle management
+- **LLM Guardrails**: Input sanitization and output safety filters to prevent prompt injection and harmful content
+- **Query Preprocessing**: Query decomposition for complex questions, intelligent namespace routing, and token estimation for cost control
+- **Cumulative Lead Scoring**: Session-aware scoring that accumulates across conversation turns with decay and recalculation
+
 ## Quick Start
 
 ### Prerequisites
@@ -72,43 +87,105 @@ docker-compose up -d
 
 ```
 ampl-chatbot/
-├── api/                    # FastAPI application
+├── api/                         # FastAPI application
 │   ├── routes/
-│   │   ├── chat.py         # Chat, feedback, payment-confirm endpoints
-│   │   ├── leads.py        # Lead management endpoints
-│   │   ├── admin.py        # Admin & health endpoints
-│   │   ├── webhooks.py     # DMS event webhooks (payment, delivery, service, job-card)
-│   │   ├── scheduled.py    # Scheduled messages (follow-ups, reminders, SLA)
-│   │   └── notifications.py # Multi-channel dispatcher (widget, WhatsApp, email)
-│   ├── services.py         # Service initialization & dependency injection
-│   └── main.py             # App factory & router registration
-├── lead_scoring/           # Lead qualification
-│   ├── intent_classifier.py  # 15-intent classifier (rule-based + LLM)
-│   ├── entity_extractor.py   # 30+ field extraction (regex-based)
-│   ├── scoring_model.py      # Rule-based scoring engine
-│   └── lead_router.py        # CRM webhook routing (Zoho/HubSpot/Salesforce)
-├── retrieval/              # RAG retrieval layer
-│   ├── embedder.py           # Embedding service (OpenAI / Bedrock Titan)
-│   ├── pinecone_client.py    # Vector DB client (4 namespaces)
-│   ├── context_builder.py    # Priority-based context assembly
-│   └── reranker.py           # Result reranking
-├── llm/                    # LLM orchestration
-│   ├── orchestrator.py       # Full pipeline (intent -> RAG -> LLM -> score -> route)
-│   └── prompt_templates.py   # 12 prompt types with system + user templates
-├── ingest_ampl/            # Data ingestion module
+│   │   ├── chat.py              # Chat, feedback, payment-confirm endpoints
+│   │   ├── leads.py             # Lead management endpoints
+│   │   ├── admin.py             # Admin & health endpoints
+│   │   ├── auth.py              # JWT login & registration
+│   │   ├── analytics.py         # Conversation/lead/intent/feedback analytics
+│   │   ├── compliance.py        # GDPR export, erasure, audit log
+│   │   ├── experiments.py       # A/B experiment management
+│   │   ├── handoff.py           # Human handoff queue & resolution
+│   │   ├── knowledge.py         # Knowledge base ingestion & management
+│   │   ├── realtime.py          # WebSocket & SSE live chat
+│   │   ├── tenants.py           # Multi-tenant management
+│   │   ├── webhooks.py          # DMS event webhooks (payment, delivery, service, job-card)
+│   │   ├── scheduled.py         # Scheduled messages (follow-ups, reminders, SLA)
+│   │   └── notifications.py     # Multi-channel dispatcher (widget, WhatsApp, email)
+│   ├── analytics/
+│   │   └── collector.py         # Metrics collector & aggregation engine
+│   ├── channels/
+│   │   ├── base.py              # Abstract channel interface
+│   │   ├── whatsapp.py          # WhatsApp Business API client
+│   │   └── email.py             # Email (SendGrid / AWS SES) client
+│   ├── experiments/
+│   │   └── engine.py            # A/B experiment engine with traffic splitting
+│   ├── flows/
+│   │   ├── definitions.py       # Conversation flow definitions
+│   │   └── engine.py            # Flow execution engine
+│   ├── handoff/
+│   │   └── manager.py           # Human handoff queue manager
+│   ├── knowledge/
+│   │   └── version_tracker.py   # Document version & refresh tracker
+│   ├── middleware/
+│   │   ├── metrics.py           # Prometheus metrics middleware
+│   │   └── rate_limit.py        # Token-bucket rate limiter
+│   ├── realtime/
+│   │   └── connection_manager.py # WebSocket/SSE connection manager
+│   ├── tenants/
+│   │   └── manager.py           # Tenant isolation & config manager
+│   ├── services.py              # Service initialization & dependency injection
+│   └── main.py                  # App factory & router registration
+│
+├── database/                    # Database layer
+│   ├── models.py                # SQLAlchemy ORM models (conversations, leads, messages)
+│   ├── repositories.py          # Repository pattern for DB operations
+│   └── session.py               # Async session factory & connection pool
+│
+├── lead_scoring/                # Lead qualification
+│   ├── intent_classifier.py     # 15-intent classifier (rule-based + LLM)
+│   ├── entity_extractor.py      # 30+ field extraction (regex-based)
+│   ├── scoring_model.py         # Rule-based scoring engine
+│   ├── cumulative_scorer.py     # Session-aware cumulative scoring
+│   └── lead_router.py           # CRM webhook routing (Zoho/HubSpot/Salesforce)
+│
+├── retrieval/                   # RAG retrieval layer
+│   ├── embedder.py              # Embedding service (OpenAI / Bedrock Titan)
+│   ├── pinecone_client.py       # Vector DB client (4 namespaces)
+│   ├── context_builder.py       # Priority-based context assembly
+│   ├── reranker.py              # Result reranking
+│   ├── namespace_router.py      # Intent-to-namespace routing
+│   ├── query_decomposer.py      # Complex query decomposition
+│   ├── query_preprocessor.py    # Query cleaning & preprocessing
+│   └── token_estimator.py       # Token counting for cost control
+│
+├── llm/                         # LLM orchestration
+│   ├── orchestrator.py          # Full pipeline (intent -> RAG -> LLM -> score -> route)
+│   ├── prompt_templates.py      # 12 prompt types with system + user templates
+│   ├── conversation_store.py    # In-memory conversation history store
+│   ├── db_conversation_store.py # Database-backed conversation store
+│   └── guardrails.py            # Input/output safety filters
+│
+├── ingest_ampl/                 # Data ingestion module
+│   ├── main.py                  # CLI ingestion script
 │   ├── inventory_loader.py
 │   ├── sales_docs_loader.py
 │   ├── insurance_loader.py
 │   └── faq_loader.py
-├── config/                 # Configuration
-│   ├── settings.py           # Pydantic settings (env-based)
-│   ├── scoring_rules.yaml    # Lead scoring rules
-│   └── metadata_schema.yaml  # Vector metadata schema
-├── data/                   # Source data
-│   ├── faqs.json             # 23 FAQs (financing, service, delivery, escalation, etc.)
-│   └── inventory.csv         # Vehicle inventory
-├── frontend/               # Chat widget
-└── docker/                 # Docker configuration
+│
+├── config/                      # Configuration
+│   ├── settings.py              # Pydantic settings (env-based)
+│   ├── scoring_rules.yaml       # Lead scoring rules
+│   └── metadata_schema.yaml     # Vector metadata schema
+├── data/                        # Source data
+│   ├── faqs.json                # 23 FAQs (financing, service, delivery, escalation, etc.)
+│   └── inventory.csv            # Vehicle inventory (10 models)
+├── frontend/                    # Chat widget
+│   └── widget/                  # Embeddable HTML/JS/CSS chat widget
+├── tests/                       # Test suite
+│   ├── test_chat.py             # Chat endpoint tests
+│   ├── test_lead_scoring.py     # Lead scoring tests
+│   ├── test_ingestion.py        # Data ingestion tests
+│   └── test_retrieval.py        # Retrieval pipeline tests
+├── scripts/                     # Startup & utility scripts
+│   ├── setup.sh / setup.bat     # Environment setup
+│   ├── run_api.sh / run_api.bat # API server startup
+│   └── ingest_data.sh / .bat    # Data ingestion runner
+└── docker/                      # Docker configuration
+    ├── Dockerfile
+    ├── Dockerfile.ingest
+    └── docker-compose.yml
 ```
 
 ## API Endpoints
@@ -161,6 +238,65 @@ ampl-chatbot/
 | `GET` | `/api/v1/admin/health` | System health |
 | `GET` | `/api/v1/admin/index/stats` | Vector index stats |
 | `POST` | `/api/v1/admin/ingestion/trigger` | Trigger data ingestion |
+| `GET` | `/api/v1/admin/config` | View current configuration |
+| `PATCH` | `/api/v1/admin/config` | Update runtime configuration |
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/auth/login` | Login with email/password, returns JWT token |
+| `POST` | `/api/v1/auth/register` | Register new user (admin/agent/viewer roles) |
+
+### Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/analytics/conversations` | Conversation metrics (volume, duration, resolution) |
+| `GET` | `/api/v1/analytics/leads` | Lead funnel metrics (scores, conversion, sources) |
+| `GET` | `/api/v1/analytics/intents` | Intent distribution analytics |
+| `GET` | `/api/v1/analytics/feedback` | Feedback & NPS analytics |
+
+### Compliance (GDPR)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/compliance/export/{customer_id}` | Export all customer data (JSON) |
+| `DELETE` | `/api/v1/compliance/erase/{customer_id}` | Erase all customer data (right to be forgotten) |
+| `GET` | `/api/v1/compliance/audit-log` | View audit trail of data operations |
+
+### Experiments
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/experiments` | Create A/B experiment (prompt/model variants) |
+| `GET` | `/api/v1/experiments` | List all experiments with status |
+| `GET` | `/api/v1/experiments/{id}` | Get experiment details & results |
+| `DELETE` | `/api/v1/experiments/{id}` | Stop and archive experiment |
+
+### Human Handoff
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/handoff/active` | List active handoff requests in queue |
+| `POST` | `/api/v1/handoff/resolve/{id}` | Resolve a handoff (mark as handled) |
+
+### Knowledge Management
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/knowledge/ingest` | Ingest new documents into knowledge base |
+| `POST` | `/api/v1/knowledge/refresh` | Trigger refresh of stale documents |
+| `GET` | `/api/v1/knowledge/status` | Document ingestion status & versions |
+| `DELETE` | `/api/v1/knowledge/document/{id}` | Remove document from knowledge base |
+
+### Real-Time
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `WS` | `/api/v1/realtime/ws/chat/{conversation_id}` | WebSocket live chat connection |
+| `GET` | `/api/v1/realtime/sse/chat/{conversation_id}` | SSE stream for chat updates |
+
+### Tenants
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/tenants` | Create new tenant |
+| `GET` | `/api/v1/tenants` | List all tenants |
+| `GET` | `/api/v1/tenants/{id}` | Get tenant details & usage |
+| `DELETE` | `/api/v1/tenants/{id}` | Deactivate tenant |
 
 ## Lead Scoring
 
@@ -225,6 +361,34 @@ SERVICE_MILESTONES='[{"name":"Welcome Call","days":7},{"name":"1st Free Service"
 
 # Follow-up Intervals (days after enquiry)
 FOLLOWUP_INTERVALS='[0, 1, 15]'
+
+# Database (Enterprise)
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/ampl_chatbot
+
+# Authentication (Enterprise)
+JWT_SECRET=your-secret-key-here
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_MINUTES=480
+
+# WhatsApp Business API (Enterprise)
+WHATSAPP_API_URL=https://graph.facebook.com/v18.0
+WHATSAPP_API_TOKEN=xxx
+WHATSAPP_PHONE_NUMBER_ID=xxx
+
+# Email (Enterprise)
+EMAIL_PROVIDER=sendgrid            # sendgrid or ses
+SENDGRID_API_KEY=xxx
+# Or AWS SES
+AWS_SES_REGION=ap-south-1
+EMAIL_FROM=noreply@amplindia.com
+
+# Rate Limiting
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW_SECONDS=60
+
+# Multi-Tenant
+ENABLE_MULTI_TENANT=false
+DEFAULT_TENANT_ID=ampl-default
 ```
 
 ## Architecture
@@ -292,15 +456,18 @@ pytest tests/ -v
 
 For production, ensure:
 - [ ] HTTPS with valid SSL certificate
-- [ ] API key authentication enabled
-- [ ] Rate limiting configured
-- [ ] Monitoring (Sentry, CloudWatch) enabled
-- [ ] Database for persistent storage (replace in-memory stores)
-- [ ] Redis for caching
+- [ ] JWT authentication enabled (`JWT_SECRET` set)
+- [ ] Rate limiting configured (`RATE_LIMIT_REQUESTS`)
+- [ ] PostgreSQL database configured (`DATABASE_URL`)
+- [ ] Alembic migrations applied (`alembic upgrade head`)
+- [ ] Monitoring — Prometheus metrics at `/metrics`, Sentry/CloudWatch
+- [ ] Redis for caching and session management
 - [ ] Task queue (Celery/APScheduler) for scheduled messages
-- [ ] WhatsApp Business API provider (Gupshup/Twilio/Meta Cloud API)
-- [ ] Email service (SendGrid/SES) for email notifications
-- [ ] Auto-scaling configured
+- [ ] WhatsApp Business API provider configured
+- [ ] Email service (SendGrid/SES) configured
+- [ ] GDPR compliance audit logging enabled
+- [ ] LLM guardrails enabled for input/output filtering
+- [ ] Auto-scaling configured (ECS/K8s HPA)
 
 ## License
 
