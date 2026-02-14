@@ -394,43 +394,84 @@ DEFAULT_TENANT_ID=ampl-default
 ## Architecture
 
 ```
-                          ┌──────────────────────────────────┐
-                          │         DMS / External           │
-                          │  (Payment, Delivery, Service)    │
-                          └──────────┬───────────────────────┘
-                                     │ Webhooks
-                                     v
-User ──> API ──> Intent Classifier (15 intents)
-                      │
-                      ├──> Entity Extractor (30+ fields)
-                      │         │
-                      │         v
-                      │    Lead Scorer ──> Lead Router ──> CRM Webhook
-                      │
-                      ├──> Language Detection (Hindi/Marathi/Gujarati)
-                      │
-                      ├──> Embedding ──> Pinecone Query ──> Context Builder
-                      │                                          │
-                      v                                          v
-                 Prompt Builder ──────────────────────────> LLM Response
-                      │                                          │
-                      │    ┌─────────────────────────────────────┘
-                      v    v
-                 Sentiment Analysis (feedback messages)
-                      │
-                      v
-              Stage Tracker (enquiry -> booked -> delivered -> servicing)
-                      │
-                      v
-         ┌────────────┴────────────┐
-         │   Notification Router   │
-         ├─────────┬───────┬───────┤
-         │ Widget  │ WhatsApp │ Email │
-         └─────────┴───────┴───────┘
-                      │
-                      v
-              Scheduled Messages
-         (Follow-ups, Reminders, SLA)
+                    ┌──────────────────────────────────┐
+                    │         DMS / External           │
+                    │  (Payment, Delivery, Service)    │
+                    └──────────┬───────────────────────┘
+                               │ Webhooks
+                               v
+User ──> API Gateway ──> Auth Middleware (JWT / API Key / RBAC)
+              │               │
+              │          Rate Limiter ──> Prometheus Metrics (/metrics)
+              │               │
+              v               v
+         ┌─────────── Orchestrator Pipeline (parallel) ────────────┐
+         │                                                         │
+         │  [1] Intent Classifier ──┐                              │
+         │      (15 intents +       │                              │
+         │       Hindi/Hinglish     │  asyncio.gather()            │
+         │       keywords +         ├──────────────────────┐       │
+         │       LLM fallback)      │                      │       │
+         │                          │                      │       │
+         │  [2] Entity Extractor ───┘                      │       │
+         │      (30+ fields +                              │       │
+         │       Hindi/Devanagari +                        │       │
+         │       word-boundary)                            │       │
+         │                                                 │       │
+         │  [3] Query Preprocessor ──> Namespace Router    │       │
+         │      (Hinglish expand,      (intent-based)      │       │
+         │       filler removal)            │               │       │
+         │                                  v               │       │
+         │  [4] Embedding (+ LRU Cache) ──> Pinecone      │       │
+         │      Token Estimator             (targeted NS)  │       │
+         │                                  │               │       │
+         │  [5] Query Decomposer ──────────>│               │       │
+         │      (multi-facet fanout)        v               │       │
+         │                          Reranker + Hybrid Search│       │
+         │                                  │               │       │
+         │                          Context Builder         │       │
+         │                          (Jaccard dedup)         │       │
+         │                                  │               │       │
+         │  [6] Context Window Manager ─────┘               │       │
+         │      (priority-based truncation)                 │       │
+         │                                                  │       │
+         │  [7] Flow Engine ──> Prompt Builder ──> LLM     │       │
+         │      (guided conversations)              │       │       │
+         │                                          v       │       │
+         │  [8] Guardrails (response verification) ─┘       │       │
+         │                                                  │       │
+         │  [9] Cumulative Lead Scorer ──> Lead Router ──> CRM     │
+         │      (60% avg + 40% peak)                               │
+         │                                                         │
+         │  [10] Handoff Manager ──> Agent Queue                   │
+         │       (trigger detection)                               │
+         └─────────────────────────────────────────────────────────┘
+              │                                          │
+              v                                          v
+    ┌─────────────────┐                     ┌──────────────────┐
+    │ PostgreSQL (async)│                     │  A/B Experiments │
+    │ Conversations    │                     │  Variant assign  │
+    │ Leads + Events   │                     │  Metric collect  │
+    │ Messages         │                     └──────────────────┘
+    │ Feedback         │
+    └─────────────────┘
+              │
+              v
+    ┌─────────────────────────────────┐
+    │       Notification Router       │
+    ├──────────┬──────────┬───────────┤
+    │  Widget  │ WhatsApp │   Email   │
+    │  (WS/SSE)│(Meta/Gup)│(SG/SES)  │
+    └──────────┴──────────┴───────────┘
+              │
+              v
+    ┌─────────────────────────────────┐
+    │  Multi-Tenant Manager           │
+    │  Knowledge Version Tracker      │
+    │  Analytics Collector            │
+    │  GDPR Compliance (export/erase) │
+    │  Scheduled Messages             │
+    └─────────────────────────────────┘
 ```
 
 ## Data Ingestion
@@ -456,17 +497,17 @@ pytest tests/ -v
 
 For production, ensure:
 - [ ] HTTPS with valid SSL certificate
-- [ ] JWT authentication enabled (`JWT_SECRET` set)
-- [ ] Rate limiting configured (`RATE_LIMIT_REQUESTS`)
-- [ ] PostgreSQL database configured (`DATABASE_URL`)
+- [x] JWT authentication enabled (`JWT_SECRET` set) — implemented in `api/routes/auth.py`
+- [x] Rate limiting configured (`RATE_LIMIT_REQUESTS`) — implemented in `api/middleware/rate_limit.py`
+- [x] PostgreSQL database configured (`DATABASE_URL`) — implemented in `database/session.py`
 - [ ] Alembic migrations applied (`alembic upgrade head`)
-- [ ] Monitoring — Prometheus metrics at `/metrics`, Sentry/CloudWatch
+- [x] Monitoring — Prometheus metrics at `/metrics` — implemented in `api/middleware/metrics.py`
 - [ ] Redis for caching and session management
 - [ ] Task queue (Celery/APScheduler) for scheduled messages
-- [ ] WhatsApp Business API provider configured
-- [ ] Email service (SendGrid/SES) configured
-- [ ] GDPR compliance audit logging enabled
-- [ ] LLM guardrails enabled for input/output filtering
+- [x] WhatsApp Business API provider configured — implemented in `api/channels/whatsapp.py`
+- [x] Email service (SendGrid/SES) configured — implemented in `api/channels/email.py`
+- [x] GDPR compliance audit logging enabled — implemented in `api/routes/compliance.py`
+- [x] LLM guardrails enabled for input/output filtering — implemented in `llm/guardrails.py`
 - [ ] Auto-scaling configured (ECS/K8s HPA)
 
 ## License
